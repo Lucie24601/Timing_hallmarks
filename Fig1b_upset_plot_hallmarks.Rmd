@@ -1,0 +1,144 @@
+---
+title: "Fig1b_upset_plot_hallmarks"
+output: html_document
+date: "2024-02-13"
+---
+---
+title: "UpsetRedone"
+author: "Luis Zapata"
+date: "2024-01-21"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggvenn)
+library(UpSetR)
+library(ComplexHeatmap)
+library(ggplot2)
+library(dplyr)
+library(readxl)
+library(writexl)
+library(ggupset)
+library(readxl)
+library(biomaRt)
+library(RColorBrewer)
+
+```
+
+
+```{r cars}
+
+#reading the data
+
+load("/Users/lzapata/Dropbox/PI_position/Projects/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/drivergenes.RData")
+
+#stratify patients depending on whether they have hallmark mutations
+
+
+Gene_list_of_cancer_hallmarks <- read_excel("/Users/lzapata/Dropbox/PI_position/Projects/Aim2_HallmarkTime/Tables/Gene_list_of_cancer_hallmarks.xlsx")
+load("/Users/lzapata/Dropbox/PI_position/Projects/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/list_names.RData")
+
+hallmark_genes<-Gene_list_of_cancer_hallmarks %>% unique()
+#convert genes to ensembl id
+
+hsapiens_genes <- getBM(attributes = c("ensembl_gene_id", 
+                                       "hgnc_symbol"),
+                        mart = useMart("ensembl", dataset = "hsapiens_gene_ensembl"))
+
+all_hallmarks <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% hallmark_genes$ALL)
+all_hallmarks<-  unique(all_hallmarks$hgnc_symbol)
+all_hallmarks<-as.data.frame(all_hallmarks)
+
+angiogenesis <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% hallmark_genes$ANGIOGENESIS) 
+angiogenesis<-  unique(angiogenesis$hgnc_symbol)
+angiogenesis<-as.data.frame(angiogenesis)
+angiogenesis<-angiogenesis%>%filter(angiogenesis %in% list_names$list_names)
+
+
+metabolism <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% hallmark_genes$METABOLISM) 
+metabolism<-  unique(metabolism$hgnc_symbol)
+metabolism<-as.data.frame(metabolism)
+
+
+death <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% hallmark_genes$DEATH) 
+death<-  unique(death$hgnc_symbol)
+death<-as.data.frame(death)
+
+proliferation <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% hallmark_genes$PROLIFERATION) 
+proliferation<-  unique(proliferation$hgnc_symbol)
+proliferation<-as.data.frame(proliferation)
+
+
+inflammation <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% hallmark_genes$INFLAMMATION) 
+inflammation<-  unique(inflammation$hgnc_symbol)
+inflammation<-as.data.frame(inflammation)
+
+metastasis <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% hallmark_genes$METASTASIS) 
+metastasis<-  unique(metastasis$hgnc_symbol)
+metastasis<-as.data.frame(metastasis)
+
+immortality <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% hallmark_genes$IMMORTALITY) 
+immortality<-  unique(immortality$hgnc_symbol)
+immortality<-as.data.frame(immortality)
+
+
+growth <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% hallmark_genes$GROWTH) 
+growth<-  unique(growth$hgnc_symbol)
+growth<-as.data.frame(growth)
+
+
+immune <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% hallmark_genes$IMMUNE) 
+immune<-  unique(immune$hgnc_symbol)
+immune<-as.data.frame(immune)
+
+mutations <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% hallmark_genes$MUTATIONS) 
+mutations<-  unique(mutations$hgnc_symbol)
+mutations<-as.data.frame(mutations)
+
+
+escape_genes = readxl::read_xlsx("/Users/lzapata/Dropbox/PI_position/Projects/Aim2_DriverLandscape/Data/SuppTable3_escapegenes_Aug2021.xlsx")
+colnames(escape_genes)<-"escape"
+
+#filter
+death<-death%>%filter(death %in% list_names$list_names)
+driver<-drivergenes%>%filter(drivergenes %in% list_names$list_names)
+escape<-escape_genes%>%filter(escape %in% list_names$list_names)
+growth<-growth%>%filter(growth %in% list_names$list_names)
+immune<-immune%>%filter(immune %in% list_names$list_names)
+immortality<-immortality%>%filter(immortality %in% list_names$list_names)
+inflammation<-inflammation%>%filter(inflammation %in% list_names$list_names)
+metabolism<-metabolism%>%filter(metabolism %in% list_names$list_names)
+metastasis<-metastasis%>%filter(metastasis %in% list_names$list_names)
+mutations<-mutations%>%filter(mutations %in% list_names$list_names)
+proliferation<-proliferation%>%filter(proliferation %in% list_names$list_names)
+angiogenesis<-angiogenesis%>%filter(angiogenesis %in% list_names$list_names)
+
+
+
+myGeneSets <- list(
+  angiogenesis= angiogenesis$angiogenesis,
+  metabolism = metabolism$metabolism,
+  death  = death$death,
+  proliferation= proliferation$proliferation,
+  inflammation=inflammation$inflammation,
+  metastasis=metastasis$metastasis,
+  immortality=immortality$immortality,
+  growth=growth$growth,
+  immune_evasion=immune$immune,
+  genome_instability=mutations$mutations,
+  driver= driver$driver,
+  escape=escape_genes$escape
+)
+
+
+
+pal=c( "red", "blue", "turquoise", "green", "brown", "black","yellow","orange","magenta", "pink", "purple", "grey")
+mycolors <- colorRampPalette(pal)(232)
+
+p<-upset(fromList(myGeneSets), nsets = 12, main.bar.color=mycolors, sets.bar.color=c( "red", "blue", "turquoise", "green", "brown", "black","yellow","orange","magenta", "pink", "purple", "grey"))
+p
+#ggsave("Hallmarks_overlap.pdf",plot = p, units = "cm",height = 10, width = 20)
+
+
+```

@@ -1,0 +1,390 @@
+---
+title: "Final_VAF"
+author: "Lucie_Gourmet"
+date: "07/03/2023"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(ggpubr)
+library(ggrepel)
+library(ggstatsplot)
+library(ggeasy)
+
+```
+
+
+
+```{r load and prepare data}
+load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/drivergenes.RData")
+load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/list_names.RData")
+load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/primary_data.RData")
+load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/annotated_normal_data.RData")
+
+```
+
+
+
+```{r VAF for pancancer Fig1c}
+setwd("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Fig1a_VAF_confidence_interval")
+
+primary_plot<-primary_data%>%dplyr::filter(impact %in% c("Missense", "Nonsense","Essential_Splice","Stop_loss"))%>%dplyr::filter(gene %in% list_names$list_names)
+#create 
+df_angiogenesis<-primary_plot%>% dplyr::filter(angiogenesis=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, angiogenesis)
+df_angiogenesis$angiogenesis<-"angiogenesis"
+colnames(df_angiogenesis)[colnames(df_angiogenesis) == 'angiogenesis'] <- 'category'
+
+
+df_driver<-primary_plot%>% filter(driver=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, driver)
+df_driver$driver<-"driver"
+colnames(df_driver)[colnames(df_driver) == 'driver'] <- 'category'
+
+df_escape<-primary_plot%>% filter(escape=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, escape)
+df_escape$escape<-"escape"
+colnames(df_escape)[colnames(df_escape) == 'escape'] <- 'category'
+
+df_mutations<-primary_plot%>% filter(mutations=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, mutations)
+df_mutations$mutations<-"genome instability"
+colnames(df_mutations)[colnames(df_mutations) == 'mutations'] <- 'category'
+
+df_growth<-primary_plot%>% filter(growth=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, growth)
+df_growth$growth<-"growth"
+colnames(df_growth)[colnames(df_growth) == 'growth'] <- 'category'
+
+df_immortality<-primary_plot%>% filter(immortality=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, immortality)
+df_immortality$immortality<-"immortality"
+colnames(df_immortality)[colnames(df_immortality) == 'immortality'] <- 'category'
+
+df_metastasis<-primary_plot%>% filter(metastasis=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, metastasis)
+df_metastasis$metastasis<-"metastasis"
+colnames(df_metastasis)[colnames(df_metastasis) == 'metastasis'] <- 'category'
+
+
+df_inflammation<-primary_plot%>% filter(inflammation=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, inflammation)
+df_inflammation$inflammation<-"inflammation"
+colnames(df_inflammation)[colnames(df_inflammation) == 'inflammation'] <- 'category'
+
+df_proliferation<-primary_plot%>% filter(proliferation=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, proliferation)
+df_proliferation$proliferation<-"proliferation"
+colnames(df_proliferation)[colnames(df_proliferation) == 'proliferation'] <- 'category'
+
+df_death<-primary_plot%>% filter(death=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, death)
+df_death$death<-"death"
+colnames(df_death)[colnames(df_death) == 'death'] <- 'category'
+
+df_metabolism<-primary_plot%>% filter(metabolism=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, metabolism)
+df_metabolism$metabolism<-"metabolism"
+colnames(df_metabolism)[colnames(df_metabolism) == 'metabolism'] <- 'category'
+
+df_immune<-primary_plot%>% filter(immune=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, immune)
+df_immune$immune<-"immune evasion"
+colnames(df_immune)[colnames(df_immune) == 'immune'] <- 'category'
+
+
+df_density<-rbind(df_angiogenesis, df_metabolism, df_death, df_proliferation, df_inflammation, df_metastasis, df_immortality, df_growth, df_immune, df_mutations, df_driver, df_escape)
+
+
+#function to calculate mean and sd
+library("plotrix")
+data_summary <- function(data, varname, groupnames){
+  require(plyr)
+  summary_func <- function(x, col){
+    c(mean = mean(x[[col]], na.rm=TRUE),
+      std.error = std.error(x[[col]], na.rm=TRUE))
+  }
+  data_sum<-ddply(data, groupnames, .fun=summary_func,
+                  varname)
+  data_sum <- rename(data_sum, c("mean" = varname))
+ return(data_sum)
+}
+
+df_VAF<- data_summary(df_density, varname="VAF", 
+                    groupnames= "category")
+df_VAF<-df_VAF[-(3:4), ]
+
+
+p1<-ggplot(df_VAF, aes(x= reorder(category, -VAF), y = VAF), color=category)+
+  geom_errorbar(aes(ymin=VAF-std.error, ymax=VAF+std.error, color=category), width=0, position=position_dodge(0.78))+ rotate_x_text(45) +   
+  geom_point(position = position_dodge(0.78), size = 1.5) +  cowplot::theme_cowplot()+theme(legend.position="none")+scale_y_log10()+xlab(NULL) +ylab("VAF")+ scale_color_manual(breaks = c("genome instability", "immortality", "metabolism", "angiogenesis","growth", "death","proliferation", "metastasis", "immune evasion", "inflammation"), values =c( "purple", "turquoise", "magenta", "red", "brown","blue", "pink", "yellow", "orange", "green") )+
+  theme(axis.text.x = element_text(angle=90, vjust=.5, hjust=1))+ggtitle("Cancer")
+
+#+coord_flip()+ scale_x_discrete(limits = c("immune evasion","inflammation","proliferation", "metastasis","death","angiogenesis", "growth", "metabolism", "immortality", "genome instability"))
+
+
+ggsave("VAF_pancancer.pdf",plot = p1, units = "cm",height = 12, width = 16)
+```
+
+
+```{VAF for normal Fig1c}
+
+
+normal_plot<-annotated_normal_data%>%dplyr::filter(impact %in% c("Missense", "Nonsense","Essential_Splice","Stop_loss"))%>%dplyr::filter(gene %in% list_names$list_names)
+#create 
+df_angiogenesis<-normal_plot%>% filter(angiogenesis=="YES")%>% dplyr::select(sampleID, gene, VAF, tissue,  angiogenesis)
+df_angiogenesis$angiogenesis<-"angiogenesis"
+colnames(df_angiogenesis)[colnames(df_angiogenesis) == 'angiogenesis'] <- 'category'
+
+
+df_driver<-normal_plot%>% filter(driver=="YES")%>% dplyr::select(sampleID, gene, VAF, tissue,  driver)
+df_driver$driver<-"driver"
+colnames(df_driver)[colnames(df_driver) == 'driver'] <- 'category'
+
+df_escape<-normal_plot%>% filter(escape=="YES")%>% dplyr::select(sampleID, gene, VAF, tissue,  escape)
+df_escape$escape<-"escape"
+colnames(df_escape)[colnames(df_escape) == 'escape'] <- 'category'
+
+df_mutations<-normal_plot%>% filter(mutations=="YES")%>% dplyr::select(sampleID, gene, VAF, tissue,  mutations)
+df_mutations$mutations<-"genome instability"
+colnames(df_mutations)[colnames(df_mutations) == 'mutations'] <- 'category'
+
+df_growth<-normal_plot%>% filter(growth=="YES")%>% dplyr::select(sampleID, gene, VAF, tissue,  growth)
+df_growth$growth<-"growth"
+colnames(df_growth)[colnames(df_growth) == 'growth'] <- 'category'
+
+df_immortality<-normal_plot%>% filter(immortality=="YES")%>% dplyr::select(sampleID, gene, VAF, tissue,  immortality)
+df_immortality$immortality<-"immortality"
+colnames(df_immortality)[colnames(df_immortality) == 'immortality'] <- 'category'
+
+df_metastasis<-normal_plot%>% filter(metastasis=="YES")%>% dplyr::select(sampleID, gene, VAF, tissue,  metastasis)
+df_metastasis$metastasis<-"metastasis"
+colnames(df_metastasis)[colnames(df_metastasis) == 'metastasis'] <- 'category'
+
+
+df_inflammation<-normal_plot%>% filter(inflammation=="YES")%>% dplyr::select(sampleID, gene, VAF, tissue,  inflammation)
+df_inflammation$inflammation<-"inflammation"
+colnames(df_inflammation)[colnames(df_inflammation) == 'inflammation'] <- 'category'
+
+df_proliferation<-normal_plot%>% filter(proliferation=="YES")%>% dplyr::select(sampleID, gene, VAF, tissue,  proliferation)
+df_proliferation$proliferation<-"proliferation"
+colnames(df_proliferation)[colnames(df_proliferation) == 'proliferation'] <- 'category'
+
+df_death<-normal_plot%>% filter(death=="YES")%>% dplyr::select(sampleID, gene, VAF, tissue,  death)
+df_death$death<-"death"
+colnames(df_death)[colnames(df_death) == 'death'] <- 'category'
+
+df_metabolism<-normal_plot%>% filter(metabolism=="YES")%>% dplyr::select(sampleID, gene, VAF, tissue,  metabolism)
+df_metabolism$metabolism<-"metabolism"
+colnames(df_metabolism)[colnames(df_metabolism) == 'metabolism'] <- 'category'
+
+df_immune<-normal_plot%>% filter(immune=="YES")%>% dplyr::select(sampleID, gene, VAF, tissue,  immune)
+df_immune$immune<-"immune evasion"
+colnames(df_immune)[colnames(df_immune) == 'immune'] <- 'category'
+
+
+df_density<-rbind(df_angiogenesis, df_metabolism, df_death, df_proliferation, df_inflammation, df_metastasis, df_immortality, df_growth, df_immune, df_mutations, df_driver, df_escape)
+
+
+library("plotrix")
+data_summary <- function(data, varname, groupnames){
+  require(plyr)
+  summary_func <- function(x, col){
+    c(mean = mean(x[[col]], na.rm=TRUE),
+      std.error = std.error(x[[col]], na.rm=TRUE))
+  }
+  data_sum<-ddply(data, groupnames, .fun=summary_func,
+                  varname)
+  data_sum <- rename(data_sum, c("mean" = varname))
+ return(data_sum)
+}
+
+df_VAF<- data_summary(df_density, varname="VAF", 
+                    groupnames= "category")
+
+df_VAF<-df_VAF[-(3:4), ]
+#plot VAF error bars
+p1<-ggplot(df_VAF, aes(x= reorder(category, -VAF), y = VAF), color=category)+
+  geom_errorbar(aes(ymin=VAF-std.error, ymax=VAF+std.error, color=category), width=0, position=position_dodge(0.78))+ rotate_x_text(45) +   
+  geom_point(position = position_dodge(0.78), size = 1.5) +  cowplot::theme_cowplot()+theme(legend.position="none")+scale_y_log10()+ggtitle("Normal")+
+  ggeasy::easy_center_title() +ylab("VAF") +xlab("Cancer hallmarks (ordered by VAF)")+ scale_color_manual(breaks = c("genome instability", "immortality", "metabolism", "angiogenesis","growth", "death","proliferation", "metastasis", "immune evasion", "inflammation"), values =c( "purple", "turquoise", "magenta", "red", "brown","blue","pink", "yellow", "orange", "green") )+theme(axis.text.x = element_text(angle=90, vjust=.5, hjust=1))+ggtitle("Normal") +scale_y_continuous(breaks = seq(0.11, 0.13, by = 0.01), labels = c("0.11", "0.12", "0.13"), limits=c(0.11, 0.13))+ scale_x_discrete(limits = c("genome instability", "immortality","metabolism", "growth","angiogenesis","death","metastasis","proliferation","inflammation", "immune evasion"))
+
+
+#+coord_flip()+ scale_x_discrete(limits = c("immortality","angiogenesis", "inflammation", "immune evasion","death","proliferation", "metastasis", "growth", "genome instability","metabolism"))
+
+
+
+
+ggsave("VAF_normal.pdf",plot = p1, units = "cm",height = 12, width = 16)
+
+```
+
+
+```{r copy number correction}
+
+
+primary_plot<-primary_data%>%dplyr::filter(impact %in% c("Missense", "Nonsense","Essential_Splice","Stop_loss"))%>%dplyr::filter(gene %in% list_names$list_names)%>%dplyr::filter(absCNcorrected == "2")
+#create 
+df_angiogenesis<-primary_plot%>% dplyr::filter(angiogenesis=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, angiogenesis)
+df_angiogenesis$angiogenesis<-"angiogenesis"
+colnames(df_angiogenesis)[colnames(df_angiogenesis) == 'angiogenesis'] <- 'category'
+
+
+df_driver<-primary_plot%>% filter(driver=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, driver)
+df_driver$driver<-"driver"
+colnames(df_driver)[colnames(df_driver) == 'driver'] <- 'category'
+
+df_escape<-primary_plot%>% filter(escape=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, escape)
+df_escape$escape<-"escape"
+colnames(df_escape)[colnames(df_escape) == 'escape'] <- 'category'
+
+df_mutations<-primary_plot%>% filter(mutations=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, mutations)
+df_mutations$mutations<-"genome instability"
+colnames(df_mutations)[colnames(df_mutations) == 'mutations'] <- 'category'
+
+df_growth<-primary_plot%>% filter(growth=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, growth)
+df_growth$growth<-"growth"
+colnames(df_growth)[colnames(df_growth) == 'growth'] <- 'category'
+
+df_immortality<-primary_plot%>% filter(immortality=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, immortality)
+df_immortality$immortality<-"immortality"
+colnames(df_immortality)[colnames(df_immortality) == 'immortality'] <- 'category'
+
+df_metastasis<-primary_plot%>% filter(metastasis=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, metastasis)
+df_metastasis$metastasis<-"metastasis"
+colnames(df_metastasis)[colnames(df_metastasis) == 'metastasis'] <- 'category'
+
+
+df_inflammation<-primary_plot%>% filter(inflammation=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, inflammation)
+df_inflammation$inflammation<-"inflammation"
+colnames(df_inflammation)[colnames(df_inflammation) == 'inflammation'] <- 'category'
+
+df_proliferation<-primary_plot%>% filter(proliferation=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, proliferation)
+df_proliferation$proliferation<-"proliferation"
+colnames(df_proliferation)[colnames(df_proliferation) == 'proliferation'] <- 'category'
+
+df_death<-primary_plot%>% filter(death=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, death)
+df_death$death<-"death"
+colnames(df_death)[colnames(df_death) == 'death'] <- 'category'
+
+df_metabolism<-primary_plot%>% filter(metabolism=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, metabolism)
+df_metabolism$metabolism<-"metabolism"
+colnames(df_metabolism)[colnames(df_metabolism) == 'metabolism'] <- 'category'
+
+df_immune<-primary_plot%>% filter(immune=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, immune)
+df_immune$immune<-"immune evasion"
+colnames(df_immune)[colnames(df_immune) == 'immune'] <- 'category'
+
+
+df_density<-rbind(df_angiogenesis, df_metabolism, df_death, df_proliferation, df_inflammation, df_metastasis, df_immortality, df_growth, df_immune, df_mutations, df_driver, df_escape)
+
+
+#function to calculate mean and sd
+library("plotrix")
+data_summary <- function(data, varname, groupnames){
+  require(plyr)
+  summary_func <- function(x, col){
+    c(mean = mean(x[[col]], na.rm=TRUE),
+      std.error = std.error(x[[col]], na.rm=TRUE))
+  }
+  data_sum<-ddply(data, groupnames, .fun=summary_func,
+                  varname)
+  data_sum <- rename(data_sum, c("mean" = varname))
+ return(data_sum)
+}
+
+df_VAF<- data_summary(df_density, varname="VAF", 
+                    groupnames= "category")
+df_VAF<-df_VAF[-(3:4), ]
+
+
+p1<-ggplot(df_VAF, aes(x= reorder(category, -VAF), y = VAF), color=category)+
+  geom_errorbar(aes(ymin=VAF-std.error, ymax=VAF+std.error, color=category), width=0, position=position_dodge(0.78))+ rotate_x_text(45) +   
+  geom_point(position = position_dodge(0.78), size = 1.5) +  cowplot::theme_cowplot()+theme(legend.position="none")+scale_y_log10()+xlab("Cancer hallmarks (ordered by VAF)") +ylab("VAF") + scale_color_manual(breaks = c("genome instability", "immortality", "metabolism", "angiogenesis","growth", "death","proliferation", "metastasis", "immune evasion", "inflammation"), values =c( "purple", "turquoise", "magenta", "red", "brown","blue", "pink", "yellow", "orange", "green") )+
+  theme(axis.text.x = element_text(angle=90, vjust=.5, hjust=1))+
+
+#+coord_flip()+ scale_x_discrete(limits = c("inflammation","immune evasion","death","proliferation", "metastasis","angiogenesis", "growth", "metabolism", "immortality", "genome instability"))
+
+
+ggsave("VAF_pancancer_copy_number.pdf",plot = p1, units = "cm",height = 12, width = 16)
+
+```
+
+```{r CCF}
+primary_plot<-primary_data%>%dplyr::filter(impact %in% c("Missense", "Nonsense","Essential_Splice","Stop_loss"))%>%dplyr::filter(gene %in% list_names$list_names)
+df_angiogenesis<-primary_plot%>% dplyr::filter(angiogenesis=="YES")%>% dplyr::select(sampleID, gene, ccf, cancertype, angiogenesis)
+df_angiogenesis$angiogenesis<-"angiogenesis"
+colnames(df_angiogenesis)[colnames(df_angiogenesis) == 'angiogenesis'] <- 'category'
+
+
+df_driver<-primary_plot%>% filter(driver=="YES")%>% dplyr::select(sampleID, gene, ccf, cancertype, driver)
+df_driver$driver<-"driver"
+colnames(df_driver)[colnames(df_driver) == 'driver'] <- 'category'
+
+df_escape<-primary_plot%>% filter(escape=="YES")%>% dplyr::select(sampleID, gene, ccf, cancertype, escape)
+df_escape$escape<-"escape"
+colnames(df_escape)[colnames(df_escape) == 'escape'] <- 'category'
+
+df_mutations<-primary_plot%>% filter(mutations=="YES")%>% dplyr::select(sampleID, gene, ccf, cancertype, mutations)
+df_mutations$mutations<-"genome instability"
+colnames(df_mutations)[colnames(df_mutations) == 'mutations'] <- 'category'
+
+df_growth<-primary_plot%>% filter(growth=="YES")%>% dplyr::select(sampleID, gene, ccf, cancertype, growth)
+df_growth$growth<-"growth"
+colnames(df_growth)[colnames(df_growth) == 'growth'] <- 'category'
+
+df_immortality<-primary_plot%>% filter(immortality=="YES")%>% dplyr::select(sampleID, gene, ccf, cancertype, immortality)
+df_immortality$immortality<-"immortality"
+colnames(df_immortality)[colnames(df_immortality) == 'immortality'] <- 'category'
+
+df_metastasis<-primary_plot%>% filter(metastasis=="YES")%>% dplyr::select(sampleID, gene, ccf, cancertype, metastasis)
+df_metastasis$metastasis<-"metastasis"
+colnames(df_metastasis)[colnames(df_metastasis) == 'metastasis'] <- 'category'
+
+
+df_inflammation<-primary_plot%>% filter(inflammation=="YES")%>% dplyr::select(sampleID, gene, ccf, cancertype, inflammation)
+df_inflammation$inflammation<-"inflammation"
+colnames(df_inflammation)[colnames(df_inflammation) == 'inflammation'] <- 'category'
+
+df_proliferation<-primary_plot%>% filter(proliferation=="YES")%>% dplyr::select(sampleID, gene, ccf, cancertype, proliferation)
+df_proliferation$proliferation<-"proliferation"
+colnames(df_proliferation)[colnames(df_proliferation) == 'proliferation'] <- 'category'
+
+df_death<-primary_plot%>% filter(death=="YES")%>% dplyr::select(sampleID, gene, ccf, cancertype, death)
+df_death$death<-"death"
+colnames(df_death)[colnames(df_death) == 'death'] <- 'category'
+
+df_metabolism<-primary_plot%>% filter(metabolism=="YES")%>% dplyr::select(sampleID, gene, ccf, cancertype, metabolism)
+df_metabolism$metabolism<-"metabolism"
+colnames(df_metabolism)[colnames(df_metabolism) == 'metabolism'] <- 'category'
+
+df_immune<-primary_plot%>% filter(immune=="YES")%>% dplyr::select(sampleID, gene, ccf, cancertype, immune)
+df_immune$immune<-"immune evasion"
+colnames(df_immune)[colnames(df_immune) == 'immune'] <- 'category'
+
+
+df_density<-rbind(df_angiogenesis, df_metabolism, df_death, df_proliferation, df_inflammation, df_metastasis, df_immortality, df_growth, df_immune, df_mutations, df_driver, df_escape)
+
+
+#function to calculate mean and sd
+library("plotrix")
+data_summary <- function(data, varname, groupnames){
+  require(plyr)
+  summary_func <- function(x, col){
+    c(mean = mean(x[[col]], na.rm=TRUE),
+      std.error = std.error(x[[col]], na.rm=TRUE))
+  }
+  data_sum<-ddply(data, groupnames, .fun=summary_func,
+                  varname)
+  data_sum <- rename(data_sum, c("mean" = varname))
+  return(data_sum)
+}
+
+df_ccf<- data_summary(df_density, varname="ccf", 
+                      groupnames= "category")
+df_ccf<-df_ccf[-(3:4), ]
+
+
+p1<-ggplot(df_ccf, aes(x= reorder(category, -ccf), y = ccf), color=category)+
+  geom_errorbar(aes(ymin=ccf-std.error, ymax=ccf+std.error, color=category), width=0, position=position_dodge(0.78))+ rotate_x_text(45) +   
+  geom_point(position = position_dodge(0.78), size = 1.5) +  cowplot::theme_cowplot()+theme(legend.position="none")+scale_y_log10()+xlab("Cancer hallmarks (ordered by ccf)") +ylab("ccf") + scale_color_manual(breaks = c("genome instability", "immortality", "metabolism", "angiogenesis","growth", "death","proliferation", "metastasis", "immune evasion", "inflammation"), values =c( "purple", "turquoise", "magenta", "red", "brown","blue", "pink", "yellow", "orange", "green") )+
+  theme(axis.text.x = element_text(angle=90, vjust=.5, hjust=1))
+
+#+coord_flip()+ scale_x_discrete(limits = c("immune evasion","inflammation","proliferation", "metastasis","death","growth","angiogenesis", "genome instability", "metabolism", "immortality"))
+
+
+ggsave("ccf_pancancer.pdf",plot = p1, units = "cm",height = 12, width = 16)
+
+
+```

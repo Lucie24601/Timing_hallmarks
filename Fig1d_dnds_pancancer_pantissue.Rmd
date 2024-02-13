@@ -1,0 +1,527 @@
+---
+title: "Fig1d_dnds_pancancer_pantissue"
+output: html_document
+date: "2024-02-13"
+---
+
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(ggpubr)
+library(ggrepel)
+library(ggstatsplot)
+library(dndscv)
+library(ggpubr)
+library(ggrepel)
+library(readxl)
+library(readr)
+#Lucie
+load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/RefCDS_human_GRCh37_dNdScv.0.1.0.rda")
+refdb_run =RefCDS
+load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/drivergenes.RData")
+load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/list_names.RData")
+load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/primary_data.RData")
+
+
+
+```
+
+
+
+```{r load prepare hallmarks list}
+
+#stratify hallmark mutations
+library(readxl)
+
+Gene_list_of_cancer_hallmarks <- read_excel("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/Gene_list_of_cancer_hallmarks.xlsx")
+
+#convert genes to ensembl id
+library(biomaRt)
+hsapiens_genes <- getBM(attributes = c("ensembl_gene_id", 
+                                       "hgnc_symbol"),
+                        mart = useMart("ensembl", dataset = "hsapiens_gene_ensembl"))
+
+all_hallmarks <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$ALL) 
+all_hallmarks<-  unique(all_hallmarks$hgnc_symbol)
+all_hallmarks<-as.data.frame(all_hallmarks)
+
+angiogenesis <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$ANGIOGENESIS) 
+angiogenesis<-  unique(angiogenesis$hgnc_symbol)
+angiogenesis<-as.data.frame(angiogenesis)
+angiogenesis<-angiogenesis%>%filter(angiogenesis %in% list_names$list_names)
+
+
+metabolism <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$METABOLISM) 
+metabolism<-  unique(metabolism$hgnc_symbol)
+metabolism<-as.data.frame(metabolism)
+
+
+death <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$DEATH) 
+death<-  unique(death$hgnc_symbol)
+death<-as.data.frame(death)
+
+proliferation <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$PROLIFERATION) 
+proliferation<-  unique(proliferation$hgnc_symbol)
+proliferation<-as.data.frame(proliferation)
+
+
+inflammation <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$INFLAMMATION) 
+inflammation<-  unique(inflammation$hgnc_symbol)
+inflammation<-as.data.frame(inflammation)
+
+metastasis <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$METASTASIS) 
+metastasis<-  unique(metastasis$hgnc_symbol)
+metastasis<-as.data.frame(metastasis)
+
+immortality <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$IMMORTALITY) 
+immortality<-  unique(immortality$hgnc_symbol)
+immortality<-as.data.frame(immortality)
+
+
+growth <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$GROWTH) 
+growth<-  unique(growth$hgnc_symbol)
+growth<-as.data.frame(growth)
+
+
+immune <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$IMMUNE) 
+immune<-  unique(immune$hgnc_symbol)
+immune<-as.data.frame(immune)
+
+mutations <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$MUTATIONS) 
+mutations<-  unique(mutations$hgnc_symbol)
+mutations<-as.data.frame(mutations)
+
+
+escape_genes = readxl::read_xlsx("/Users/luciegourmet/Dropbox/Projects/DriverLandscape/Data/SuppTable3_escapegenes_Aug2021.xlsx")
+colnames(escape_genes)<-"escape"
+
+#filter
+death<-death%>%filter(death %in% list_names$list_names)
+driver<-drivergenes%>%filter(drivergenes %in% list_names$list_names)
+escape<-escape_genes%>%filter(escape %in% list_names$list_names)
+growth<-growth%>%filter(growth %in% list_names$list_names)
+immune<-immune%>%filter(immune %in% list_names$list_names)
+immortality<-immortality%>%filter(immortality %in% list_names$list_names)
+inflammation<-inflammation%>%filter(inflammation %in% list_names$list_names)
+metabolism<-metabolism%>%filter(metabolism %in% list_names$list_names)
+metastasis<-metastasis%>%filter(metastasis %in% list_names$list_names)
+mutations<-mutations%>%filter(mutations %in% list_names$list_names)
+proliferation<-proliferation%>%filter(proliferation %in% list_names$list_names)
+angiogenesis<-angiogenesis%>%filter(angiogenesis %in% list_names$list_names)
+
+```
+
+
+
+```{r run dnds on each gene list of hallmarks}
+#```{r load_functions}
+#primary_data<-read_tsv("/Users/luciegourmet/Dropbox/Projects/DriverLandscape/TCGA_hg19_pancancer_annotated.tsv")
+setwd("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Fig1b_dNdS_pancancer")
+#primary_data$chr<-interaction( "chr", primary_data$chr, sep = "")
+#create df
+
+
+
+df_relevant_angiogenesis_dndscv<-dndscv(primary_data, refdb = refdb_run ,cv=NULL, gene_list =angiogenesis$angiogenesis)
+
+save(df_relevant_angiogenesis_dndscv, file="df_relevant_angiogenesis_dndscv.RData")
+
+
+
+df_relevant_metabolism_dndscv<-dndscv(primary_data, refdb = refdb_run ,cv=NULL, gene_list =metabolism$metabolism)
+
+save(df_relevant_metabolism_dndscv, file="df_relevant_metabolism_dndscv.RData")
+
+
+
+df_relevant_death_dndscv<-dndscv(primary_data, refdb = refdb_run ,cv=NULL, gene_list =death$death)
+
+save(df_relevant_death_dndscv, file="df_relevant_death_dndscv.RData")
+
+
+
+df_relevant_proliferation_dndscv<-dndscv(primary_data, refdb = refdb_run ,cv=NULL, gene_list =proliferation$proliferation)
+
+save(df_relevant_proliferation_dndscv, file="df_relevant_proliferation_dndscv.RData")
+
+
+
+df_relevant_inflammation_dndscv<-dndscv(primary_data, refdb = refdb_run ,cv=NULL, gene_list =inflammation$inflammation)
+
+save(df_relevant_inflammation_dndscv, file="df_relevant_inflammation_dndscv.RData")
+
+
+
+df_relevant_metastasis_dndscv<-dndscv(primary_data, refdb = refdb_run ,cv=NULL,gene_list =metastasis$metastasis)
+
+save(df_relevant_metastasis_dndscv, file="df_relevant_metastasis_dndscv.RData")
+
+
+
+
+df_relevant_immortality_dndscv<-dndscv(primary_data, refdb = refdb_run ,cv=NULL, gene_list =immortality$immortality)
+
+save(df_relevant_immortality_dndscv, file="df_relevant_immortality_dndscv.RData")
+
+
+
+
+df_relevant_growth_dndscv<-dndscv(primary_data, refdb = refdb_run ,cv=NULL, gene_list =growth$growth)
+
+save(df_relevant_growth_dndscv, file="df_relevant_growth_dndscv.RData")
+
+
+
+df_relevant_immune_dndscv<-dndscv(primary_data, refdb = refdb_run ,cv=NULL, gene_list =immune$immune)
+
+save(df_relevant_immune_dndscv, file="df_relevant_immune_dndscv.RData")
+
+
+
+df_relevant_mutations_dndscv<-dndscv(primary_data, refdb = refdb_run ,cv=NULL, gene_list =mutations$mutations)
+
+save(df_relevant_mutations_dndscv, file="df_relevant_mutations_dndscv.RData")
+
+
+
+
+df_relevant_driver_dndscv<-dndscv(primary_data, refdb = refdb_run ,cv=NULL, gene_list =driver$drivergenes)
+
+save(df_relevant_driver_dndscv, file="df_relevant_driver_dndscv.RData")
+
+
+
+
+df_relevant_escape_dndscv<-dndscv(primary_data, refdb = refdb_run ,cv=NULL, gene_list =escape$escape)
+
+save(df_relevant_escape_dndscv, file="df_relevant_escape_dndscv.RData")
+
+```
+
+
+
+```{r plot the results for the 10 hallmarks}
+plotdnds<-function(x){
+  df_1<-x$globaldnds
+  Globaldnds<- c(df_1[1,2])
+  dndshigh<- c(df_1[1,4])
+  dndslow<- c(df_1[1,3])
+  df_x <- data.frame(Globaldnds, dndshigh, dndslow)
+  return(df_x)
+}
+
+p_angiogenesis<-plotdnds(x =df_relevant_angiogenesis_dndscv)
+p_angiogenesis$Hallmark<-"angiogenesis"
+
+p_mutations<-plotdnds(x =df_relevant_mutations_dndscv)
+p_mutations$Hallmark<-"genome instability"
+
+
+p_immune<-plotdnds(x =df_relevant_immune_dndscv)
+p_immune$Hallmark<-"immune evasion"
+
+p_growth<-plotdnds(x =df_relevant_growth_dndscv)
+p_growth$Hallmark<-"growth"
+
+p_immortality<-plotdnds(x =df_relevant_immortality_dndscv)
+p_immortality$Hallmark<-"immortality"
+
+
+p_metastasis<-plotdnds(x =df_relevant_metastasis_dndscv)
+p_metastasis$Hallmark<-"metastasis"
+
+p_inflammation<-plotdnds(x =df_relevant_inflammation_dndscv)
+p_inflammation$Hallmark<-"inflammation"
+
+p_proliferation<-plotdnds(x =df_relevant_proliferation_dndscv)
+p_proliferation$Hallmark<-"proliferation"
+
+p_death<-plotdnds(x =df_relevant_death_dndscv)
+p_death$Hallmark<-"death"
+
+p_metabolism<-plotdnds(x =df_relevant_metabolism_dndscv)
+p_metabolism$Hallmark<-"metabolism"
+
+p_driver<-plotdnds(x =df_relevant_driver_dndscv)
+p_driver$Hallmark<-"driver"
+
+p_escape<-plotdnds(x =df_relevant_escape_dndscv)
+p_escape$Hallmark<-"escape"
+
+
+p_hallmarks<-rbind(p_metabolism, p_death, p_proliferation, p_inflammation, p_metastasis, p_immortality, p_growth, p_immune, p_mutations, p_angiogenesis)
+
+Pancancer<-ggplot(p_hallmarks, aes(x= reorder(Hallmark, -Globaldnds), y = Globaldnds), color=Hallmark)+
+  geom_errorbar(aes(ymin=dndslow, ymax=dndshigh, color=Hallmark), width=0, position=position_dodge(0.78))+ rotate_x_text(45) +   
+  geom_point(position = position_dodge(0.78), size = 1.5) +  cowplot::theme_cowplot()+ geom_hline(yintercept=1, linetype="dashed", color = "red")+theme(legend.position="none")+scale_y_log10()+xlab(NULL) +ylab("dN/dS") +ggtitle("Cancer")+
+  ggeasy::easy_center_title() + scale_color_manual(breaks = c("genome instability", "immortality", "metabolism", "angiogenesis","growth", "death","proliferation", "metastasis", "immune evasion", "inflammation"), values =c( "purple", "turquoise", "magenta", "red", "brown","blue","pink", "yellow", "orange", "green") )+
+  theme(axis.text.x = element_text(angle=90, vjust=.5, hjust=1))
+
+#+coord_flip()+ scale_x_discrete(limits = c("metastasis",  "proliferation", "inflammation", "death","immune evasion", "growth","angiogenesis", "metabolism", "genome instability","immortality"))
+
+ggsave("Global_dnds_pancancer.pdf",plot = Pancancer, units = "cm",height = 12, width = 16)
+
+```
+
+
+
+
+---
+```{r setup, include=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(ggpubr)
+library(ggrepel)
+library(ggstatsplot)
+library(dndscv)
+library(ggpubr)
+library(ggrepel)
+library(readxl)
+library(readr)
+#Lucie
+load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/RefCDS_human_GRCh37_dNdScv.0.1.0.rda")
+refdb_run =RefCDS
+
+
+```
+
+
+```{r loadprepare}
+load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/drivergenes.RData")
+load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/list_names.RData")
+load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/annotated_normal_data.RData")
+#stratify patients depending on whether they have hallmark mutations
+library(readxl)
+
+Gene_list_of_cancer_hallmarks <- read_excel("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/Gene_list_of_cancer_hallmarks.xlsx")
+
+#convert genes to ensembl id
+library(biomaRt)
+hsapiens_genes <- getBM(attributes = c("ensembl_gene_id", 
+                                       "hgnc_symbol"),
+                        mart = useMart("ensembl", dataset = "hsapiens_gene_ensembl"))
+
+all_hallmarks <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$ALL) 
+all_hallmarks<-  unique(all_hallmarks$hgnc_symbol)
+all_hallmarks<-as.data.frame(all_hallmarks)
+
+angiogenesis <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$ANGIOGENESIS) 
+angiogenesis<-  unique(angiogenesis$hgnc_symbol)
+angiogenesis<-as.data.frame(angiogenesis)
+angiogenesis<-angiogenesis%>%filter(angiogenesis %in% list_names$list_names)
+
+
+metabolism <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$METABOLISM) 
+metabolism<-  unique(metabolism$hgnc_symbol)
+metabolism<-as.data.frame(metabolism)
+
+
+death <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$DEATH) 
+death<-  unique(death$hgnc_symbol)
+death<-as.data.frame(death)
+
+proliferation <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$PROLIFERATION) 
+proliferation<-  unique(proliferation$hgnc_symbol)
+proliferation<-as.data.frame(proliferation)
+
+
+inflammation <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$INFLAMMATION) 
+inflammation<-  unique(inflammation$hgnc_symbol)
+inflammation<-as.data.frame(inflammation)
+
+metastasis <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$METASTASIS) 
+metastasis<-  unique(metastasis$hgnc_symbol)
+metastasis<-as.data.frame(metastasis)
+
+immortality <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$IMMORTALITY) 
+immortality<-  unique(immortality$hgnc_symbol)
+immortality<-as.data.frame(immortality)
+
+
+growth <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$GROWTH) 
+growth<-  unique(growth$hgnc_symbol)
+growth<-as.data.frame(growth)
+
+
+immune <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$IMMUNE) 
+immune<-  unique(immune$hgnc_symbol)
+immune<-as.data.frame(immune)
+
+mutations <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$MUTATIONS) 
+mutations<-  unique(mutations$hgnc_symbol)
+mutations<-as.data.frame(mutations)
+
+
+escape_genes = readxl::read_xlsx("/Users/luciegourmet/Dropbox/Projects/DriverLandscape/Data/SuppTable3_escapegenes_Aug2021.xlsx")
+colnames(escape_genes)<-"escape"
+
+#filter
+death<-death%>%filter(death %in% list_names$list_names)
+driver<-drivergenes%>%filter(drivergenes %in% list_names$list_names)
+escape<-escape_genes%>%filter(escape %in% list_names$list_names)
+growth<-growth%>%filter(growth %in% list_names$list_names)
+immune<-immune%>%filter(immune %in% list_names$list_names)
+immortality<-immortality%>%filter(immortality %in% list_names$list_names)
+inflammation<-inflammation%>%filter(inflammation %in% list_names$list_names)
+metabolism<-metabolism%>%filter(metabolism %in% list_names$list_names)
+metastasis<-metastasis%>%filter(metastasis %in% list_names$list_names)
+mutations<-mutations%>%filter(mutations %in% list_names$list_names)
+proliferation<-proliferation%>%filter(proliferation %in% list_names$list_names)
+angiogenesis<-angiogenesis%>%filter(angiogenesis %in% list_names$list_names)
+
+```
+
+
+
+
+```{r run dnds on each gene list of hallmarks}
+
+setwd("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Fig1b_dNdS_normal/dNdS_normal")
+
+
+
+
+df_normal_angiogenesis_dndscv<-dndscv(annotated_normal_data, refdb = refdb_run ,cv=NULL, gene_list =angiogenesis$angiogenesis)
+
+save(df_normal_angiogenesis_dndscv, file="df_normal_angiogenesis_dndscv.RData")
+
+
+
+df_normal_metabolism_dndscv<-dndscv(annotated_normal_data, refdb = refdb_run ,cv=NULL, gene_list =metabolism$metabolism)
+
+save(df_normal_metabolism_dndscv, file="df_normal_metabolism_dndscv.RData")
+
+
+
+df_normal_death_dndscv<-dndscv(annotated_normal_data, refdb = refdb_run ,cv=NULL, gene_list =death$death)
+
+save(df_normal_death_dndscv, file="df_normal_death_dndscv.RData")
+
+
+
+df_normal_proliferation_dndscv<-dndscv(annotated_normal_data, refdb = refdb_run ,cv=NULL, gene_list =proliferation$proliferation)
+
+save(df_normal_proliferation_dndscv, file="df_normal_proliferation_dndscv.RData")
+
+
+
+df_normal_inflammation_dndscv<-dndscv(annotated_normal_data, refdb = refdb_run ,cv=NULL, gene_list =inflammation$inflammation)
+
+save(df_normal_inflammation_dndscv, file="df_normal_inflammation_dndscv.RData")
+
+
+
+df_normal_metastasis_dndscv<-dndscv(annotated_normal_data, refdb = refdb_run ,cv=NULL,gene_list =metastasis$metastasis)
+
+save(df_normal_metastasis_dndscv, file="df_normal_metastasis_dndscv.RData")
+
+
+
+
+df_normal_immortality_dndscv<-dndscv(annotated_normal_data, refdb = refdb_run ,cv=NULL, gene_list =immortality$immortality)
+
+save(df_normal_immortality_dndscv, file="df_normal_immortality_dndscv.RData")
+
+
+
+
+df_normal_growth_dndscv<-dndscv(annotated_normal_data, refdb = refdb_run ,cv=NULL, gene_list =growth$growth)
+
+save(df_normal_growth_dndscv, file="df_normal_growth_dndscv.RData")
+
+
+
+df_normal_immune_dndscv<-dndscv(annotated_normal_data, refdb = refdb_run ,cv=NULL, gene_list =immune$immune)
+
+save(df_normal_immune_dndscv, file="df_normal_immune_dndscv.RData")
+
+
+
+df_normal_mutations_dndscv<-dndscv(annotated_normal_data, refdb = refdb_run ,cv=NULL, gene_list =mutations$mutations)
+
+save(df_normal_mutations_dndscv, file="df_normal_mutations_dndscv.RData")
+
+
+
+
+df_normal_driver_dndscv<-dndscv(annotated_normal_data, refdb = refdb_run ,cv=NULL, gene_list =driver$drivergenes)
+
+save(df_normal_driver_dndscv, file="df_normal_driver_dndscv.RData")
+
+
+
+
+df_normal_escape_dndscv<-dndscv(annotated_normal_data, refdb = refdb_run ,cv=NULL, gene_list =escape$escape)
+
+save(df_normal_escape_dndscv, file="df_normal_escape_dndscv.RData")
+
+```
+
+
+
+```{r plot the results for the 10 hallmarks}
+plotdnds<-function(x){
+  df_1<-x$globaldnds
+  Globaldnds<- c(df_1[1,2])
+  dndshigh<- c(df_1[1,4])
+  dndslow<- c(df_1[1,3])
+  df_x <- data.frame(Globaldnds, dndshigh, dndslow)
+  return(df_x)
+}
+#get the mean and confidence interval for each hallmark
+p_angiogenesis<-plotdnds(x =df_normal_angiogenesis_dndscv)
+p_angiogenesis$Hallmark<-"angiogenesis"
+
+p_mutations<-plotdnds(x =df_normal_mutations_dndscv)
+p_mutations$Hallmark<-"genome instability"
+
+
+p_immune<-plotdnds(x =df_normal_immune_dndscv)
+p_immune$Hallmark<-"immune evasion"
+
+p_growth<-plotdnds(x =df_normal_growth_dndscv)
+p_growth$Hallmark<-"growth"
+
+p_immortality<-plotdnds(x =df_normal_immortality_dndscv)
+p_immortality$Hallmark<-"immortality"
+
+
+p_metastasis<-plotdnds(x =df_normal_metastasis_dndscv)
+p_metastasis$Hallmark<-"metastasis"
+
+p_inflammation<-plotdnds(x =df_normal_inflammation_dndscv)
+p_inflammation$Hallmark<-"inflammation"
+
+p_proliferation<-plotdnds(x =df_normal_proliferation_dndscv)
+p_proliferation$Hallmark<-"proliferation"
+
+p_death<-plotdnds(x =df_normal_death_dndscv)
+p_death$Hallmark<-"death"
+
+p_metabolism<-plotdnds(x =df_normal_metabolism_dndscv)
+p_metabolism$Hallmark<-"metabolism"
+
+p_driver<-plotdnds(x =df_normal_driver_dndscv)
+p_driver$Hallmark<-"driver"
+
+p_escape<-plotdnds(x =df_normal_escape_dndscv)
+p_escape$Hallmark<-"escape"
+
+#only plot the 10 hallmarks
+p_hallmarks<-rbind(p_metabolism, p_death, p_proliferation, p_inflammation, p_metastasis, p_immortality, p_growth, p_immune, p_mutations, p_angiogenesis)
+
+
+
+
+Pancancer<-ggplot(p_hallmarks, aes(x= reorder(Hallmark, -Globaldnds), y = Globaldnds), color=Hallmark)+
+  geom_errorbar(aes(ymin=dndslow, ymax=dndshigh, color=Hallmark), width=0, position=position_dodge(0.78))+ rotate_x_text(45) +   
+  geom_point(position = position_dodge(0.78), size = 1.5) +  cowplot::theme_cowplot()+ geom_hline(yintercept=1, linetype="dashed", color = "red")+theme(legend.position="none")+scale_y_log10()+xlab("Cancer hallmarks (ordered by dN/dS)") +ylab("dN/dS") +ggtitle("Normal")+
+  ggeasy::easy_center_title() + scale_color_manual(breaks = c("genome instability", "immortality", "metabolism", "angiogenesis","growth", "death","proliferation", "metastasis", "immune", "inflammation"), values =c("purple", "turquoise", "magenta", "red", "brown","blue","pink", "yellow", "orange", "green") )+
+  theme(axis.text.x = element_text(angle=90, vjust=.5, hjust=1))+ scale_x_discrete(limits = c("immortality","genome instability","metabolism","angiogenesis","growth","immune evasion","death","inflammation","proliferation", "metastasis"))
+#+coord_flip()+ scale_x_discrete(limits = c("metastasis","inflammation",  "immortality", "metabolism", "proliferation","growth", "death", "angiogenesis", "immune evasion",  "genome instability"))
+
+
+ggsave("Global_dnds_normal.pdf",plot = Pancancer, units = "cm",height = 12, width = 16)
+
+```

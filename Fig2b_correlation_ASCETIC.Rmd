@@ -1,0 +1,34 @@
+---
+title: "Fig2b_correlation_ASCETIC_cancer_types"
+output: html_document
+date: "2024-02-13"
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(ggpubr)
+library(ggrepel)
+library(ggstatsplot)
+library(dndscv)
+setwd("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/Supplementary")
+library(readxl)
+
+# Set the path to your Excel file
+file_path <- "/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/Supplementary/ASCETIC_results.xlsx"
+
+# Read the Excel file (by default, it reads the first sheet)
+data <- read_excel(file_path)
+```
+
+
+```{r cars}
+ascetic_results<- data %>% select(-hallmarks)
+cor_matrix <- cor(ascetic_results, method = "spearman")
+library(pheatmap)
+breaks <- seq(-1, 1, length.out = 100)
+p<-pheatmap(cor_matrix, cluster_rows = TRUE, cluster_cols = TRUE, upper = FALSE, breaks = breaks)
+
+
+ggsave("Correlation_cancer_types_ASCETIC.pdf",plot = p, units = "cm",height = 16, width = 20)
+```

@@ -1,0 +1,291 @@
+---
+title: "Fig2de_lung_VAF"
+output: html_document
+date: "2024-02-13"
+---
+
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(ggpubr)
+library(ggrepel)
+library(ggstatsplot)
+library(ggeasy)
+library(dplyr)
+
+```
+
+
+
+```{r load and prepare data}
+load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/drivergenes.RData")
+load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/list_names.RData")
+load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/primary_data.RData")
+load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/annotated_normal_data.RData")
+load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Fig1a_VAF_confidence_interval/LUAD_id_non_smoke.RData")
+load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Fig1a_VAF_confidence_interval/LUAD_id_smoke.RData")
+load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Fig1a_VAF_confidence_interval/LUAD_id_reformed.RData")
+load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Fig1a_VAF_confidence_interval/LUSC_id_non_smoke.RData")
+load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Fig1a_VAF_confidence_interval/LUSC_id_smoke.RData")
+load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Fig1a_VAF_confidence_interval/LUSC_id_reformed.RData")
+
+```
+
+
+
+```{r VAF for pancancer}
+setwd("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Fig1a_VAF_confidence_interval")
+
+primary_plot<-primary_data%>%dplyr::filter(impact %in% c("Missense", "Nonsense","Essential_Splice","Stop_loss"))%>%dplyr::filter(gene %in% list_names$list_names)
+
+LUAD_smoker<-primary_plot %>% filter(sampleID %in% LUAD_id_smoke$bcr_patient_barcode)
+length_LUAD_smoker<-unique(LUAD_smoker$sampleID)
+LUAD_non_smoker<-primary_plot %>% filter(sampleID %in% LUAD_id_non_smoke$bcr_patient_barcode)
+length_LUAD_non_smoker<-unique(LUAD_non_smoker$sampleID)
+LUAD_reformed<-primary_plot %>% filter(sampleID %in% LUAD_id_reformed$bcr_patient_barcode)
+length_LUAD_reformed<-unique(LUAD_reformed$sampleID)
+
+
+LUSC_smoker<-primary_plot %>% filter(sampleID %in% LUSC_id_smoke$bcr_patient_barcode)
+length_LUSC_smoker<-unique(LUSC_smoker$sampleID)
+LUSC_non_smoker<-primary_plot %>% filter(sampleID %in% LUSC_id_non_smoke$bcr_patient_barcode)
+length_LUSC_non_smoker<-unique(LUSC_non_smoker$sampleID)
+LUSC_reformed<-primary_plot %>% filter(sampleID %in% LUSC_id_reformed$bcr_patient_barcode)
+length_LUSC_reformed<-unique(LUSC_reformed$sampleID)
+
+```
+
+```{r VAF for pancancer}
+std.error <- function(x) sd(x)/sqrt(length(x))
+
+data_summary <- function(data, varname, groupnames){
+  require(plyr)
+  summary_func <- function(x, col){
+    c(mean = mean(x[[col]], na.rm=TRUE),
+      std.error = std.error(x[[col]]))
+  }
+  data_sum<-ddply(data, groupnames, .fun=summary_func,
+                  varname)
+  data_sum <- rename(data_sum, c("mean" = varname))
+  return(data_sum)
+}
+
+extract_VAF_data <- function(data=LUSC){
+  data<-data%>%dplyr::filter(impact %in% c("Missense", "Nonsense","Essential_Splice","Stop_loss"))%>%dplyr::filter(gene %in% list_names$list_names)
+  df_angiogenesis<-data%>% dplyr::filter(angiogenesis=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, angiogenesis)
+  df_angiogenesis$angiogenesis<-"angiogenesis"
+  colnames(df_angiogenesis)[colnames(df_angiogenesis) == 'angiogenesis'] <- 'category'
+  
+  
+  df_driver<-data%>% filter(driver=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, driver)
+  df_driver$driver<-"driver"
+  colnames(df_driver)[colnames(df_driver) == 'driver'] <- 'category'
+  
+  df_escape<-data%>% filter(escape=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, escape)
+  df_escape$escape<-"escape"
+  colnames(df_escape)[colnames(df_escape) == 'escape'] <- 'category'
+  
+  df_mutations<-data%>% filter(mutations=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, mutations)
+  df_mutations$mutations<-"genome instability"
+  colnames(df_mutations)[colnames(df_mutations) == 'mutations'] <- 'category'
+  
+  df_growth<-data%>% filter(growth=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, growth)
+  df_growth$growth<-"growth"
+  colnames(df_growth)[colnames(df_growth) == 'growth'] <- 'category'
+  
+  df_immortality<-data%>% filter(immortality=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, immortality)
+  df_immortality$immortality<-"immortality"
+  colnames(df_immortality)[colnames(df_immortality) == 'immortality'] <- 'category'
+  
+  df_metastasis<-data%>% filter(metastasis=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, metastasis)
+  df_metastasis$metastasis<-"metastasis"
+  colnames(df_metastasis)[colnames(df_metastasis) == 'metastasis'] <- 'category'
+  
+  
+  df_inflammation<-data%>% filter(inflammation=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, inflammation)
+  df_inflammation$inflammation<-"inflammation"
+  colnames(df_inflammation)[colnames(df_inflammation) == 'inflammation'] <- 'category'
+  
+  df_proliferation<-data%>% filter(proliferation=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, proliferation)
+  df_proliferation$proliferation<-"proliferation"
+  colnames(df_proliferation)[colnames(df_proliferation) == 'proliferation'] <- 'category'
+  
+  df_death<-data%>% filter(death=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, death)
+  df_death$death<-"death"
+  colnames(df_death)[colnames(df_death) == 'death'] <- 'category'
+  
+  df_metabolism<-data%>% filter(metabolism=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, metabolism)
+  df_metabolism$metabolism<-"metabolism"
+  colnames(df_metabolism)[colnames(df_metabolism) == 'metabolism'] <- 'category'
+  
+  df_immune<-data%>% filter(immune=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, immune)
+  df_immune$immune<-"immune evasion"
+  colnames(df_immune)[colnames(df_immune) == 'immune'] <- 'category'
+  
+  
+  df_density<-rbind(df_metabolism, df_death, df_proliferation, df_inflammation, df_metastasis, df_immortality, df_growth, df_immune, df_mutations, df_angiogenesis)
+  
+  df_VAF<- data_summary(df_density, varname="VAF", 
+                        groupnames= "category")
+  df_VAF<-as.data.frame(df_VAF[,2 ])
+  return(df_VAF)
+}
+
+
+
+
+vaf_LUAD_non_smoker<-extract_VAF_data(data=LUAD_non_smoker)
+colnames(vaf_LUAD_non_smoker)<-"LUAD non smoker (n=61)"
+
+vaf_LUAD_smoker<-extract_VAF_data(data=LUAD_smoker)
+colnames(vaf_LUAD_smoker)<-"LUAD current smoker (n=108)"
+
+
+vaf_LUAD_reformed_smoker<-extract_VAF_data(data = LUAD_reformed)
+colnames(vaf_LUAD_reformed_smoker)<-"LUAD reformed smoker (n=279)"
+
+
+
+vaf_LUSC_reformed_smoker<-extract_VAF_data(data = LUSC_reformed)
+colnames(vaf_LUSC_reformed_smoker)<-"LUSC reformed smoker (n=299)"
+
+
+vaf_LUSC_non_smoker<-extract_VAF_data(data=LUSC_non_smoker)
+colnames(vaf_LUSC_non_smoker)<-"LUSC non smoker (n=16)"
+
+vaf_LUSC_smoker<-extract_VAF_data(data=LUSC_smoker)
+colnames(vaf_LUSC_smoker)<-"LUSC current smoker (n=121)"
+
+vaf_pancancer<-extract_VAF_data(data=primary_plot)
+colnames(vaf_pancancer)<-"Pancancer (n=9484)"
+
+lung_types_vaf<-cbind(vaf_LUAD_reformed_smoker, vaf_LUAD_non_smoker, vaf_LUAD_smoker, vaf_LUSC_smoker, vaf_LUSC_non_smoker, vaf_LUSC_reformed_smoker, vaf_pancancer)
+
+
+
+
+
+
+cor_matrix <- cor(lung_types_vaf, method = "spearman")
+library(pheatmap)
+breaks <- seq(-1, 1, length.out = 100)
+pheatmap(cor_matrix, cluster_rows = TRUE, cluster_cols = TRUE, upper = FALSE, breaks=breaks)
+p<-pheatmap(cor_matrix, scale = "none", cluster_rows = TRUE, cluster_cols = TRUE, 
+         upper = FALSE, breaks=breaks)
+ggsave("Correlation_lung_VAF.pdf",plot = p, units = "cm",height = 16, width = 20)
+
+```
+
+
+
+```{r VAF for pancancer}
+extract_VAF_data <- function(data=LUSC){
+  data<-data%>%dplyr::filter(impact %in% c("Missense", "Nonsense","Essential_Splice","Stop_loss"))%>%dplyr::filter(gene %in% list_names$list_names)
+  df_angiogenesis<-data%>% dplyr::filter(angiogenesis=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, angiogenesis)
+  df_angiogenesis$angiogenesis<-"angiogenesis"
+  colnames(df_angiogenesis)[colnames(df_angiogenesis) == 'angiogenesis'] <- 'category'
+  
+  
+  df_driver<-data%>% filter(driver=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, driver)
+  df_driver$driver<-"driver"
+  colnames(df_driver)[colnames(df_driver) == 'driver'] <- 'category'
+  
+  df_escape<-data%>% filter(escape=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, escape)
+  df_escape$escape<-"escape"
+  colnames(df_escape)[colnames(df_escape) == 'escape'] <- 'category'
+  
+  df_mutations<-data%>% filter(mutations=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, mutations)
+  df_mutations$mutations<-"genome instability"
+  colnames(df_mutations)[colnames(df_mutations) == 'mutations'] <- 'category'
+  
+  df_growth<-data%>% filter(growth=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, growth)
+  df_growth$growth<-"growth"
+  colnames(df_growth)[colnames(df_growth) == 'growth'] <- 'category'
+  
+  df_immortality<-data%>% filter(immortality=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, immortality)
+  df_immortality$immortality<-"immortality"
+  colnames(df_immortality)[colnames(df_immortality) == 'immortality'] <- 'category'
+  
+  df_metastasis<-data%>% filter(metastasis=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, metastasis)
+  df_metastasis$metastasis<-"metastasis"
+  colnames(df_metastasis)[colnames(df_metastasis) == 'metastasis'] <- 'category'
+  
+  
+  df_inflammation<-data%>% filter(inflammation=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, inflammation)
+  df_inflammation$inflammation<-"inflammation"
+  colnames(df_inflammation)[colnames(df_inflammation) == 'inflammation'] <- 'category'
+  
+  df_proliferation<-data%>% filter(proliferation=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, proliferation)
+  df_proliferation$proliferation<-"proliferation"
+  colnames(df_proliferation)[colnames(df_proliferation) == 'proliferation'] <- 'category'
+  
+  df_death<-data%>% filter(death=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, death)
+  df_death$death<-"death"
+  colnames(df_death)[colnames(df_death) == 'death'] <- 'category'
+  
+  df_metabolism<-data%>% filter(metabolism=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, metabolism)
+  df_metabolism$metabolism<-"metabolism"
+  colnames(df_metabolism)[colnames(df_metabolism) == 'metabolism'] <- 'category'
+  
+  df_immune<-data%>% filter(immune=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, immune)
+  df_immune$immune<-"immune evasion"
+  colnames(df_immune)[colnames(df_immune) == 'immune'] <- 'category'
+  
+  
+  df_density<-rbind(df_metabolism, df_death, df_proliferation, df_inflammation, df_metastasis, df_immortality, df_growth, df_immune, df_mutations, df_angiogenesis)
+  
+  df_VAF<- data_summary(df_density, varname="VAF", 
+                        groupnames= "category")
+  df_VAF<-as.data.frame(df_VAF)
+  return(df_VAF)
+}
+
+
+vaf_LUAD_non_smoker<-extract_VAF_data(data=LUAD_non_smoker)
+vaf_LUAD_non_smoker$smoking_status<-"non smoker"
+
+vaf_LUAD_smoker<-extract_VAF_data(data=LUAD_smoker)
+vaf_LUAD_smoker$smoking_status<-"smoker"
+
+
+vaf_LUAD_reformed_smoker<-extract_VAF_data(data = LUAD_reformed)
+vaf_LUAD_reformed_smoker$smoking_status<-"reformed"
+
+
+
+vaf_LUSC_reformed_smoker<-extract_VAF_data(data = LUSC_reformed)
+vaf_LUSC_reformed_smoker$smoking_status<-"reformed"
+
+
+vaf_LUSC_non_smoker<-extract_VAF_data(data=LUSC_non_smoker)
+vaf_LUSC_non_smoker$smoking_status<-"non smoker"
+
+vaf_LUSC_smoker<-extract_VAF_data(data=LUSC_smoker)
+vaf_LUSC_smoker$smoking_status<-"smoker"
+
+vaf_LUAD<-rbind(vaf_LUAD_non_smoker, vaf_LUAD_reformed_smoker, vaf_LUAD_smoker)
+vaf_LUSC<-rbind(vaf_LUSC_non_smoker, vaf_LUSC_reformed_smoker, vaf_LUSC_smoker)
+
+colors <- c("#FF3030", "#B23AEE", "deepskyblue2")
+p1 <- ggplot(vaf_LUAD, aes(x = reorder(category, -VAF), y = VAF, color = smoking_status)) +
+  geom_errorbar(aes(ymin = VAF - std.error, ymax = VAF + std.error), width = 0.3, position = position_dodge(width = 0.78)) +
+  geom_point(position = position_dodge(width = 0.78), size = 1.5) +
+  scale_y_log10() +
+  labs(x = NULL, y = "VAF") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))+cowplot::theme_cowplot()+theme(axis.text.x = element_text(angle=90, vjust=.5, hjust=1))+xlab("Cancer hallmarks (LUAD)")+
+  scale_color_manual(name = "smoking status", values = colors)
+
+
+
+ggsave("VAF_LUAD.pdf",plot = p1, units = "cm",height = 12, width = 16)
+p1 <- ggplot(vaf_LUSC, aes(x = reorder(category, -VAF), y = VAF, color = smoking_status)) +
+  geom_errorbar(aes(ymin = VAF - std.error, ymax = VAF + std.error), width = 0.3, position = position_dodge(width = 0.78)) +
+  geom_point(position = position_dodge(width = 0.78), size = 1.5) +
+  scale_y_log10() +
+  labs(x = NULL, y = "VAF") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))+cowplot::theme_cowplot()+theme(axis.text.x = element_text(angle=90, vjust=.5, hjust=1))+xlab("Cancer hallmarks (LUSC)")+
+  scale_color_manual(name = "smoking status", values = colors)
+
+ggsave("VAF_LUSC.pdf",plot = p1, units = "cm",height = 12, width = 16)
+```

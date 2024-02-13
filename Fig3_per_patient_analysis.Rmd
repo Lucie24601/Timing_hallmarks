@@ -1,0 +1,819 @@
+---
+title: "Fig3_per_patient"
+output: html_document
+date: "2024-02-13"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggplot2)
+library(ggpubr)
+library(ggrepel)
+library(ggstatsplot)
+library(dndscv)
+library(pheatmap)
+library(factoextra)
+library(cluster)
+library(NbClust)
+library(survival)
+library(survminer)
+library(ggsci)
+library(readxl)
+rm(list=ls())
+setwd("~/Dropbox/PI_position/Projects/Aim2_HallmarkTime/Figures/")
+```
+
+```{r load_data}
+load("~/Dropbox/PI_position/Projects/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/primary_data.RData")
+load("~/Dropbox/PI_position/Projects/Aim2_HallmarkTime/Supplementary/all_patient_trajectories_cancer.RData")
+df.clin<-read.table("~/Dropbox/Postdoc/Support_data/tcga_clinicaldata.tsv",header=T,sep="\t")
+```
+
+```{r filter_data}
+
+
+# All mean VAF calculated for each patient
+all_patient_trajectories_cancer<-all_patient_trajectories_cancer %>% dplyr::rename("instability"=mutations)
+
+# Calculate the number of zeros in each row
+num_zeros <- apply(all_patient_trajectories_cancer, 1, function(row) sum(row == 0))
+
+# Remove rows where 3 or more elements are zero
+all_patient_trajectories_cancer_filt <- all_patient_trajectories_cancer[num_zeros < 2, ]
+
+# Dont removre rows and keep all the data
+all_patient_trajectories_cancer_RANK<-t(as.data.frame(apply(all_patient_trajectories_cancer,1,function(x) rank(-x, ties.method = "min"))))
+
+all_patient_trajectories_cancer_RANK_filt<-t(as.data.frame(apply(all_patient_trajectories_cancer_filt,1,function(x) rank(-x, ties.method = "min"))))
+
+#write.csv(x=all_patient_trajectories_cancer_RANK,file = "ranked_hallmarks_patient.csv")
+
+```
+
+```{r pancancer_order}
+###Define order of hallmarks
+fixed_order <- c("instability", "immortality", "metabolism", "growth", "angiogenesis", 
+                 "death", "metastasis", "proliferation", "inflammation", "immune")
+```
+
+```{r Fig_3A_Proportion_Hallmarks_Rank_FIGURE}
+
+# 1. Compute proportions
+prop_df <- as.data.frame(all_patient_trajectories_cancer_RANK_filt) %>%
+  gather(hallmark, rank) %>% 
+  group_by(rank, hallmark) %>% 
+  summarise(count = n()) %>% 
+  mutate(proportion = count / sum(count)) 
+
+# 2. Plot proportions
+p101<-ggplot(prop_df, aes(x = rank, y = proportion, fill = hallmark)) +
+  geom_bar(stat = "identity", position = "stack") +
+  theme_minimal() +
+  labs(x = "Rank", y = "Proportion", fill = "Hallmark")+
+  facet_wrap(~hallmark, scales = "free_y") +
+  labs(x = "Rank", y = "Proportion") +
+  theme_minimal() 
+p101
+#ggsave(filename = "~/Dropbox/PI_position/Projects/Aim2_HallmarkTime/Figures/Fig3b_Ranksperhallmark.pdf",plot = p101, width = 8, height = 8)
+
+```
+
+```{r Fig_3A_Sup_plot_supplementary_proportions}
+###Supplementary per tumor type
+a1<-as.data.frame(all_patient_trajectories_cancer_RANK_filt) %>% rownames_to_column("ID") 
+a2<-as.data.frame(annotation) %>% rownames_to_column("ID") 
+a3<-left_join(a1,a2)
+
+###function to plot
+plot_prop<-function(x,tumor="SKCM"){
+prop_df_2 <- x %>% column_to_rownames("ID") %>% filter(type==!!tumor) %>% select(-type) %>%
+  gather(hallmark, rank) %>% 
+  group_by(rank, hallmark) %>% 
+  summarise(count = n()) %>% 
+  mutate(proportion = count / sum(count)) 
+toplot<-ggplot(prop_df_2, aes(x = rank, y = proportion, fill = hallmark)) +
+  geom_bar(stat = "identity", position = "stack") +
+  theme_minimal() +
+  labs(x = "Rank", y = "Proportion", fill = "Hallmark")+
+  facet_wrap(~hallmark, scales = "free_y") +
+  labs(x = "Rank", y = "Proportion") +
+  theme_minimal() + ggtitle(tumor)
+print(toplot)
+}
+
+for(tumor_type in unique(a3$type)) {
+  plot_prop(a3,tumor = tumor_type)
+}
+
+
+```
+
+```{r Fig_3B_heatmap_RANK}
+df100<-all_patient_trajectories_cancer_RANK_filt
+
+df200 <- data.frame(Sample = colnames(all_patient_trajectories_cancer_RANK_filt))
+df200$Order <- match(df200$Sample, fixed_order)
+
+df300<-all_patient_trajectories_cancer_RANK
+###PIck annoitation to plot
+annotation<-df.clin %>% column_to_rownames("bcr_patient_barcode") %>% dplyr::select(type)
+
+p1<-pheatmap(df100[, order(df200$Order)], scale = "none", cluster_rows = TRUE, cluster_cols = FALSE,  show_rownames = FALSE, legend_title = "Spearman correlation",annotation_row = annotation,cutree_rows = 1)
+
+p2<-pheatmap(df100[, order(df200$Order)], scale = "none", cluster_rows = TRUE, cluster_cols = FALSE,  show_rownames = FALSE,legend = F,show_colnames = F,display_numbers = F,cutree_rows = 1)
+
+p3<-pheatmap(df300[, order(df200$Order)], scale = "none", cluster_rows = TRUE, cluster_cols = FALSE,  show_rownames = FALSE,legend = F,show_colnames = F,display_numbers = F,cutree_rows = 1)
+
+## Filtered
+p1
+
+## Filtered clean
+p2
+
+## Unfiltered clean
+p3
+#ggsave(filename = "~/Dropbox/PI_position/Projects/Aim2_HallmarkTime/Figures/Fig3a_rankheatmap_all.pdf",plot = p1, width = 30, height = 30)
+
+#ggsave(filename = "~/Dropbox/PI_position/Projects/Aim2_HallmarkTime/Figures/Fig3a_rankheatmap_all_onlyheatmap.pdf",plot = p2, width = 30, height = 30)
+```
+
+```{r Fig_3C_clustering_observed_ranks_PCA_FIGURE}
+
+df.100<-as.data.frame(all_patient_trajectories_cancer_RANK_filt) %>% rownames_to_column("tcgaid")
+
+## Get annotation to color
+annotation_tmp <- df.clin %>% column_to_rownames("bcr_patient_barcode") %>% select("type") %>% as.data.frame()
+
+df.100.groupingvar<-annotation_tmp %>% rownames_to_column("tcgaid")
+
+df.101 <- merge(df.100, df.100.groupingvar, by = "tcgaid", all.x = TRUE)
+
+pca_result <- prcomp(df.101[, -c(1, ncol(df.101))], scale. = FALSE)
+
+# Assuming pca_result is your PCA result and df.101 is your original data
+biplot <- fviz_pca_biplot(pca_result, axes = c(1, 2), geom=c("point", "text"), 
+                # Individuals
+                geom.ind = "point",
+                fill.ind = df.101$type, col.ind = "white",
+                pointshape = 21, pointsize = 2,
+                #palette = "jco",
+                addEllipses = FALSE,
+                # Variables
+                alpha.var ="contrib", col.var = "black",
+                gradient.cols = "RdBu"
+                ) +
+  labs(fill = "type", color = "Contrib", alpha = "Contrib") # Change legend title
+
+# Calculate the center of each group
+group_center <- df.101 %>%
+  as.data.frame() %>%
+  mutate(PC1 = pca_result$x[,1], PC2 = pca_result$x[,2]) %>%
+  group_by(type) %>%
+  summarise(center_PC1 = mean(PC1, na.rm = TRUE), center_PC2 = mean(PC2, na.rm = TRUE))
+
+# Add group labels to the center of each group
+plot_PCA1<-biplot + geom_text(data = group_center, aes(x = center_PC1, y = center_PC2, label = ""), size = 3, hjust = 1.2,)
+plot_PCA1
+
+#ggsave(filename = "~/Dropbox/PI_position/Projects/Aim2_HallmarkTime/Figures/Fig3C_PCAplot_rank.pdf",plot = plot_PCA1, width = 10, height = 10)
+
+```
+
+```{r Fig_3D_clustering_PCA2}
+# Extract the scores (coordinates) of the samples on the PCs
+scores <- pca_result$x
+
+# Perform k-means clustering
+km_result <- kmeans(scores, centers=2)  
+
+# change 'centers' to the number of clusters you want
+##Test number of clusters
+#nb <- NbClust(scores, distance = "euclidean", min.nc = 2,max.nc = 10, method = "kmeans")
+
+# Now, km_result$cluster contains the cluster assignments for each sample
+# You can add this to your original data frame
+df.102 <- df.101
+df.102$cluster <- as.character(km_result$cluster)
+
+# Now you can plot again with the clusters
+plot_PCA2<-fviz_pca_biplot(pca_result, axes = c(1, 2),geom=c("point", "text"), 
+                # Individuals
+                geom.ind = "point",repel = T,
+                fill.ind = df.102$cluster, 
+                shape.ind = df.102$cluster,  # Add this line to define shapes by cluster
+                col.ind = "white",
+                pointshape = 21, 
+                pointsize = 2,
+                #palette = "jco",
+                addEllipses = FALSE,
+                # Variables
+                alpha.var ="contrib", 
+                col.var = "black",
+                gradient.cols = "RdBu"
+                ) + labs(fill = "type", color = "Contrib", alpha = "Contrib") # Add shape to legend
+
+plot_PCA2
+#ggsave(filename = "~/Dropbox/PI_position/Projects/Aim2_HallmarkTime/Figures/Fig3DPCAplot_rank_alt.pdf",plot = plot_PCA2, width = 15, height = 15)
+
+```
+
+```{r Fig_3E_survival_2cluster_fromPCA_OS}
+
+df.clin_kmeans<-inner_join(df.clin,df.102,by = c("bcr_patient_barcode"="tcgaid")) 
+# Create survival object
+surv_obj <- Surv(time = df.clin_kmeans$OS.time, event = df.clin_kmeans$OS)
+
+# Fit survival model
+fit <- survfit(surv_obj ~ df.clin_kmeans$cluster)
+
+# Plot survival model
+psurv_rank2PCA_2Ks<-ggsurvplot(fit, data = df.clin_kmeans,risk.table = T, 
+           pval = TRUE, # display p-value of log-rank test
+           pval.method = TRUE,
+           conf.int = TRUE, 
+           risk.table.col = "strata", # change risk table color by groups
+           linetype = "strata", # change line type by groups
+           xlab = "Time in days", # Customize X-axis label
+           ylab = "Survival probability", # Customize Y-axis label
+           title = "Kaplan-Meier Survival Curve", # Add title
+           legend = "bottom", # Change legend position
+           ggtheme = theme_minimal(), # Add theme
+           palette = "npg" # Add theme
+          )
+
+pdf("~/Dropbox/PI_position/Projects/Aim2_HallmarkTime/Figures/Fig3D_Survplot_rank_2.pdf")
+print(psurv_rank2PCA_2Ks)
+dev.off()
+
+# Create a summary data frame
+summary_df <- df.102 %>%
+  group_by(type, cluster) %>%
+  summarise(count = n(), .groups = 'drop') %>%
+  mutate(proportion = count / sum(count))
+
+# Create a bar plot
+plot_bar_PCA_2Clusters<-ggplot(summary_df, aes(x = type, y = count, fill = cluster)) +
+  geom_bar(stat = "identity", position = "dodge") + scale_fill_npg() +
+  labs(x = "Tumor Type", y = "Count", fill = "Cluster") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) 
+
+ggsave(filename = "~/Dropbox/PI_position/Projects/Aim2_HallmarkTime/Figures/Fig3F_PCAplot_proportions2clusters.pdf",plot = plot_bar_PCA_2Clusters, width = 15, height = 10)
+
+
+```
+
+```{r Fig_3E_SUPP_survival_DFS_PFS}
+
+# Perform k-means clustering
+#km_result <- kmeans(scores, centers=2,nstart = 50,iter.max = 250)  # change 'centers' to the number of clusters you want
+
+# Now, km_result$cluster contains the cluster assignments for each sample
+# You can add this to your original data frame
+df.102 <- df.101
+df.102$cluster <- as.character(km_result$cluster)
+
+df.clin_kmeans<-inner_join(df.clin,df.102,by = c("bcr_patient_barcode"="tcgaid")) 
+# Create survival object
+surv_obj <- Surv(time = df.clin_kmeans$DFI.time, event = df.clin_kmeans$DFI)
+
+# Fit survival model
+fit <- survfit(surv_obj ~ df.clin_kmeans$cluster)
+
+# Plot survival model
+psurv_rank2PCA_2Ks_DFI<-ggsurvplot(fit, data = df.clin_kmeans,risk.table = F, 
+           pval = TRUE, # display p-value of log-rank test
+           pval.method = TRUE,
+           #conf.int = TRUE, 
+           #risk.table.col = "strata", # change risk table color by groups
+           #linetype = "strata", # change line type by groups
+           xlab = "Time in days", # Customize X-axis label
+           #ylab = "Survival probability", # Customize Y-axis label
+           title = "Disease Free", # Add title
+           legend = "bottom", # Change legend position
+           ggtheme = theme_minimal(), # Add theme
+           palette = "npg" # Add theme
+          )
+
+#pdf("~/Dropbox/PI_position/Projects/Aim2_HallmarkTime/Figures/Fig3D_Survplot_rank_2_DFI.pdf")
+print(psurv_rank2PCA_2Ks_DFI)
+#dev.off()
+
+surv_obj <- Surv(time = df.clin_kmeans$PFI.time, event = df.clin_kmeans$PFI)
+
+# Fit survival model
+fit <- survfit(surv_obj ~ df.clin_kmeans$cluster)
+
+# Plot survival model
+psurv_rank2PCA_2Ks_PFI<-ggsurvplot(fit, data = df.clin_kmeans,risk.table = F, 
+           pval = TRUE, # display p-value of log-rank test
+           pval.method = TRUE,
+           #conf.int = TRUE, 
+           #isk.table.col = "strata", # change risk table color by groups
+           #linetype = "strata", # change line type by groups
+           #xlab = "Time in days", # Customize X-axis label
+           #ylab = "Survival probability", # Customize Y-axis label
+           title = "Progression Free", # Add title
+           legend = "bottom", # Change legend position
+           ggtheme = theme_minimal(), # Add theme
+           palette = "npg" # Add theme
+          )
+
+#pdf("~/Dropbox/PI_position/Projects/Aim2_HallmarkTime/Figures/Fig3D_Survplot_rank_2_PFI.pdf")
+print(psurv_rank2PCA_2Ks_PFI)
+#dev.off()
+```
+
+```{r Fig_3E_supp_PropPerCluster}
+
+
+prop_df_2 <- df.102 %>% column_to_rownames("tcgaid") %>% filter(cluster==1) %>% dplyr::select(-type,-cluster) %>%
+  gather(hallmark, rank) %>% 
+  group_by(rank, hallmark) %>% 
+  summarise(count = n()) %>% 
+  mutate(proportion = count / sum(count)) 
+toplot1<-ggplot(prop_df_2, aes(x = rank, y = proportion, fill = hallmark)) +
+  geom_bar(stat = "identity", position = "stack") +
+  theme_minimal() +
+  labs(x = "Rank", y = "Proportion", fill = "Hallmark")+
+  facet_wrap(~hallmark, scales = "free_y") +
+  labs(x = "Rank", y = "Proportion") +
+  theme_minimal() + ggtitle(tumor)
+print(toplot1)
+
+ggsave(filename = "~/Dropbox/PI_position/Projects/Aim2_HallmarkTime/Figures/Fig3F_PCAplot_proportions_cluster2.pdf",plot = toplot1, width = 15, height = 10)
+
+prop_df_2 <- df.102 %>% column_to_rownames("tcgaid") %>% filter(cluster==2) %>% dplyr::select(-type,-cluster) %>%
+  gather(hallmark, rank) %>% 
+  group_by(rank, hallmark) %>% 
+  summarise(count = n()) %>% 
+  mutate(proportion = count / sum(count)) 
+toplot2<-ggplot(prop_df_2, aes(x = rank, y = proportion, fill = hallmark)) +
+  geom_bar(stat = "identity", position = "stack") +
+  theme_minimal() +
+  labs(x = "Rank", y = "Proportion", fill = "Hallmark")+
+  facet_wrap(~hallmark, scales = "free_y") +
+  labs(x = "Rank", y = "Proportion") +
+  theme_minimal() + ggtitle(tumor)
+print(toplot2)
+
+ggsave(filename = "~/Dropbox/PI_position/Projects/Aim2_HallmarkTime/Figures/Fig3F_PCAplot_proportions_cluster1.pdf",plot = toplot2, width = 15, height = 10)
+```
+
+
+```{r test_multi_tumortypes}
+
+# iterate over each tumor type
+
+pdf("~/Desktop/survival_plots_test.pdf")
+for(tumor_type in unique(df.clin_kmeans$type.x)) {
+   library(survminer)
+  # filter data for a specific tumor type
+df.clin_kmeans_x <- df.clin_kmeans %>% filter(type.x == tumor_type)
+
+  # make sure there are at least two clusters
+  if (length(unique(df.clin_kmeans_x$cluster)) < 2) {
+    print(paste(tumor_type, ": Not enough clusters."))
+    next
+  }
+
+  # check the number of samples in each cluster
+  cluster_counts <- table(df.clin_kmeans_x$cluster)
+  
+  # print for troubleshooting
+  print(paste("Tumor type:", tumor_type))
+  print(paste("Cluster counts:", toString(cluster_counts)))
+
+  # make sure each cluster has at least 20 samples, otherwise survival analysis is not possible
+  if(any(cluster_counts < 5)) {
+    print(paste(tumor_type, ": Not enough samples in each cluster."))
+    #next
+  }
+
+surv_obj_x <- Surv(time = df.clin_kmeans_x$OS.time, event = df.clin_kmeans_x$OS)
+
+# Fit survival model
+fit_x <- survfit(surv_obj_x ~ df.clin_kmeans_x$cluster)
+
+psurv_rank2PCA_2Ks_test<-ggsurvplot(fit_x, 
+             data = df.clin_kmeans_x,
+             risk.table = T, 
+           pval = TRUE, # display p-value of log-rank test
+           #pval.method = TRUE,
+           #conf.int = TRUE, 
+           #risk.table.col = "strata", # change risk table color by groups
+           #linetype = "strata", # change line type by groups
+           xlab = "Time in days", # Customize X-axis label
+           ylab = "Survival probability", # Customize Y-axis label
+           title = "Kaplan-Meier Survival Curve", # Add title
+           legend = "bottom", # Change legend position
+           ggtheme = theme_minimal(), # Add theme
+           palette = "npg" # Add theme
+          )
+
+print(psurv_rank2PCA_2Ks_test)
+#print(paste(tumor_type, ": Log-rank test p-value:", "done"))
+}
+dev.off()
+
+# calculate the p-value
+#p_value <- 1 - pchisq(fit$chisq, length(fit$n) - 1)
+
+#print(paste(tumor_type, ": Log-rank test p-value:", p_value))
+  
+```
+
+```{r analysis4_clustersRank}
+# Perform k-means clustering with 4 centers
+km_result <- kmeans(scores, centers=4,nstart = 50,iter.max = 250)  # change 'centers' to the number of clusters you want
+
+# Now, km_result$cluster contains the cluster assignments for each sample
+# You can add this to your original data frame
+df.102 <- df.101
+df.102$cluster <- as.character(km_result$cluster)
+
+df.clin_kmeans<-inner_join(df.clin,df.102,by = c("bcr_patient_barcode"="tcgaid")) 
+# Create survival object
+surv_obj <- Surv(time = df.clin_kmeans$OS.time, event = df.clin_kmeans$OS)
+
+fit <- survfit(surv_obj ~ df.clin_kmeans$cluster)
+
+# Fit survival model
+#fit <- survfit(surv_obj ~ df.clin_kmeans$type.x)
+
+# Plot survival model
+psurv_rank2PCA_4Ks<-ggsurvplot(fit, data = df.clin_kmeans,risk.table = T, 
+           pval = TRUE, # display p-value of log-rank test
+           pval.method = TRUE,
+           conf.int = TRUE, 
+           risk.table.col = "strata", # change risk table color by groups
+           linetype = "strata", # change line type by groups
+           xlab = "Time in days", # Customize X-axis label
+           ylab = "Survival probability", # Customize Y-axis label
+           title = "Kaplan-Meier Survival Curve", # Add title
+           legend = "bottom", # Change legend position
+           ggtheme = theme_minimal(), # Add theme
+           palette = "npg" # Add theme
+          )
+
+#pdf("~/Dropbox/PI_position/Projects/Aim2_HallmarkTime/Figures/Fig3E_Survplot_rank_4.pdf")
+psurv_rank2PCA_4Ks
+#dev.off()
+
+# Create a summary data frame
+summary_df <- df.102 %>%
+  group_by(type, cluster) %>%
+  summarise(count = n(), .groups = 'drop') %>%
+  mutate(proportion = count / sum(count))
+
+# Create a bar plot
+ggplot(summary_df, aes(x = type, y = count, fill = cluster)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(x = "Tumor Type", y = "Count", fill = "Cluster") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + scale_fill_npg()
+
+df.clin_kmeans<-inner_join(df.clin,df.102,by = c("bcr_patient_barcode"="tcgaid")) 
+# iterate over each tumor type
+
+for(tumor_type in unique(df.clin_kmeans$type.x)) {
+  # filter data for a specific tumor type
+  df_tumor <- df.clin_kmeans %>%
+    filter(type.x == tumor_type)
+  
+  # make sure there are at least two clusters
+  if (length(unique(df_tumor$cluster)) < 20) {
+    print(paste(tumor_type, ": Not enough clusters."))
+    #next
+  }
+
+  # check the number of samples in each cluster
+  cluster_counts <- table(df_tumor$cluster)
+  
+  # print for troubleshooting
+  print(paste("Tumor type:", tumor_type))
+  print(paste("Cluster counts:", toString(cluster_counts)))
+
+  # make sure each cluster has at least 20 samples, otherwise survival analysis is not possible
+  if(any(cluster_counts < 20)) {
+    print(paste(tumor_type, ": Not enough samples in each cluster."))
+    #next
+  }
+  
+  # create a Surv object
+  surv_obj <- Surv(time = df_tumor$OS.time, event = df_tumor$OS)
+  
+  fit <- survdiff(surv_obj ~ df_tumor$cluster)
+
+# calculate the p-value
+p_value <- 1 - pchisq(fit$chisq, length(fit$n) - 1)
+
+print(paste(tumor_type, ": Log-rank test p-value:", p_value))
+  
+}
+
+```
+
+
+```{r Fig_3DSUPP_survival_PCA2Random}
+
+
+df.101 <- merge(df.100, df.100.groupingvar, by = "tcgaid", all.x = TRUE)
+
+df.101Random<- df.101 
+df.101Random$tcgaid<- sample(df.101Random$tcgaid)
+
+pca_result_rnd <- prcomp(df.101Random[, -c(1, ncol(df.101))], scale. = FALSE)
+scores_rnd <- pca_result_rnd$x
+
+# Perform k-means clustering
+km_result_rnd <- kmeans(scores_rnd, centers=2,nstart = 50,iter.max = 250) 
+
+# Now, km_result$cluster contains the cluster assignments for each sample
+# You can add this to your original data frame
+df.102 <- df.101Random
+df.102$cluster <- as.character(km_result_rnd$cluster)
+
+df.clin_kmeans_rnd<-inner_join(df.clin,df.102,by = c("bcr_patient_barcode"="tcgaid")) 
+# Create survival object
+surv_obj_rnd <- Surv(time = df.clin_kmeans_rnd$OS.time, event = df.clin_kmeans_rnd$OS)
+
+# Fit survival model
+fit_rnd <- survfit(surv_obj_rnd ~ df.clin_kmeans_rnd$cluster)
+
+# Plot survival model
+ggsurvplot(fit_rnd, data = df.clin_kmeans_rnd,risk.table = T, 
+           pval = TRUE, # display p-value of log-rank test
+           pval.method = TRUE,
+           conf.int = TRUE, 
+           risk.table.col = "strata", # change risk table color by groups
+           linetype = "strata", # change line type by groups
+           xlab = "Time in days", # Customize X-axis label
+           ylab = "Survival probability", # Customize Y-axis label
+           title = "Kaplan-Meier Survival Curve", # Add title
+           legend = "bottom", # Change legend position
+           ggtheme = theme_minimal(), # Add theme
+           palette = "npg" # Add theme
+          )
+```
+
+```{r Fig_3SUP_percancer}
+# Create a list to store the results
+results <- list()
+
+df.1000<-as.data.frame(all_patient_trajectories_cancer_RANK_filt) %>% rownames_to_column("tcgaid")
+
+df.1001.all <- merge(df.1000, df.100.groupingvar, by = "tcgaid", all.x = TRUE)
+# Get the unique tumor types
+tumor_types <- unique(df.1001.all$type)
+
+# Loop through each tumor type
+for (tumor in tumor_types) {
+  
+  # Subset the data for the current tumor type
+  df_tumor <- df.1001.all[df.1001.all$type == tumor, ]
+  
+  # Run PCA
+  pca_result <- prcomp(df_tumor[, -c(1, ncol(df_tumor))], scale. = FALSE)
+  
+  scores_type <- pca_result$x
+  # Run Kmeans clustering
+  km_result <- kmeans(scores_type, centers = 2, nstart = 50, iter.max = 250)
+  
+  # Add the cluster assignments to the data frame
+  df_tumor$cluster <- as.character(km_result$cluster)
+  
+  # Add the PCA and Kmeans results to the list
+  results[[tumor]] <- list("pca" = pca_result, "kmeans" = km_result, "data" = df_tumor)
+}
+
+# Loop through each tumor type
+for (tumor in names(results)) {
+  
+  # Get the data for the current tumor type
+  df_tumor <- results[[tumor]]$data
+  
+  # Join with clinical data
+  df.clin_kmeans <- inner_join(df.clin, df_tumor, by = c("bcr_patient_barcode" = "tcgaid"))
+  
+  # Create survival object
+  surv_obj <- Surv(time = df.clin_kmeans$OS.time, event = df.clin_kmeans$OS)
+  
+  # Fit survival model
+  fit <- survfit(surv_obj ~ df.clin_kmeans$cluster)
+  
+  # Plot survival model
+  plot <- ggsurvplot(fit, data = df.clin_kmeans, risk.table = T,
+             pval = TRUE, # display p-value of log-rank test
+             pval.method = TRUE,
+             conf.int = TRUE, 
+             risk.table.col = "strata", # change risk table color by groups
+             linetype = "strata", # change line type by groups
+             xlab = "Time in days", # Customize X-axis label
+             ylab = "Survival probability", # Customize Y-axis label
+             title = paste("Kaplan-Meier Survival Curve for", tumor), # Add title
+             legend = "bottom", # Change legend position
+             ggtheme = theme_minimal(), # Add theme
+             palette = "npg" # Add theme
+  )
+  
+  # Print the plot
+  print(plot)
+}
+
+```
+
+```{r test}
+library(cluster)
+library(factoextra)
+library(survminer)
+
+# Create a list to store the results
+results <- list()
+
+df.1000<-as.data.frame(all_patient_trajectories_cancer_RANK_filt) %>% rownames_to_column("tcgaid")
+
+df.1001.all <- left_join(df.1000, df.100.groupingvar, by = "tcgaid")
+# Get the unique tumor types
+tumor_types <- unique(df.1001.all$type)
+
+# Loop through each tumor type
+for (tumor in tumor_types) {
+  
+  # Subset the data for the current tumor type
+  df_tumor <- df.1001.all %>% filter(type == tumor)
+  
+  # Check if there are enough samples
+  if (nrow(df_tumor) < 20) {
+    next
+  }
+  
+  if (is.na(nrow(df_tumor))) {
+    next
+  }
+  
+  # Run PCA
+  #pca_result <- prcomp(df_tumor[, -c(1, ncol(df_tumor))], scale. = FALSE)
+  
+  # Determine the optimal number of clusters using the elbow method
+  #set.seed(123)
+  #wss <- sapply(1:4, function(k) sum(kmeans(pca_result$x[, 1:2], k, nstart=50)$withinss))
+  
+  # Use the optimal number of clusters for Kmeans clustering
+  #opt_k <- which.min(wss)
+  #km_result <- kmeans(pca_result$x[, 1:2], centers = opt_k, nstart = 50, iter.max = 250)
+  km_result <- kmeans(df_tumor[, -c(1, ncol(df_tumor))], centers = 2, nstart = 50, iter.max = 250)
+  
+  
+  # Add the cluster assignments to the data frame
+  df_tumor$cluster <- as.character(km_result$cluster)
+  
+  # Merge the clinical data with the kmeans data
+  df.clin_kmeans <- inner_join(df.clin, df_tumor, by = c("bcr_patient_barcode"="tcgaid")) 
+  
+  # Create survival object
+  surv_obj <- Surv(time = df.clin_kmeans$DFI.time, event = df.clin_kmeans$DFI)
+  
+  # Fit survival model
+  fit <- survfit(surv_obj ~ df.clin_kmeans$cluster)
+  
+  # Plot survival model
+  p <- ggsurvplot(fit, data = df.clin_kmeans, risk.table = T, 
+           pval = TRUE, # display p-value of log-rank test
+           pval.method = TRUE,
+           conf.int = TRUE, 
+           risk.table.col = "strata", # change risk table color by groups
+           linetype = "strata", # change line type by groups
+           xlab = "Time in days", # Customize X-axis label
+           ylab = "Survival probability", # Customize Y-axis label
+           title = paste("Kaplan-Meier Survival Curve for", tumor), # Add title
+           legend = "bottom", # Change legend position
+           ggtheme = theme_minimal(), # Add theme
+           palette = "npg" # Add theme
+          )
+  
+  print(p)
+  
+  # Add the PCA and Kmeans results to the list
+  results[[tumor]] <- list("pca" = pca_result, "kmeans" = km_result, "data" = df_tumor, "plot" = p)
+}
+
+
+```
+
+```{r test_tSNE, eval=FALSE}
+# load libraries
+library(Rtsne)
+library(ggplot2)
+
+# assuming df is your dataframe
+df <- df.101[, -c(1, 12)]  # Exclude the first (Sample ID) and twelfth (Factor) columns
+df <- unique(df.101[, -c(1, 12)]) 
+
+dup_rows <- duplicated(df.101[, -c(1, 12)])
+
+# Keep only the unique rows in df.101
+df.102 <- df.101[!dup_rows, ]
+
+# Perform t-SNE
+tsne_out <- Rtsne(df, perplexity=50, dims=2)
+
+# Create a dataframe for visualization
+tsne_data <- data.frame(
+  X = tsne_out$Y[, 1],
+  Y = tsne_out$Y[, 2],
+  cluster = df.102[, 12]  # assuming the factor column is in 12th position in original dataframe
+)
+
+# Create a t-SNE plot
+ggplot(tsne_data, aes(x = X, y = Y, color = cluster)) +
+  geom_point() +
+  labs(color = "Cluster") +
+  theme_minimal()
+```
+
+```{r test_UMAP, eval=FALSE}
+# Check if the package is installed
+if (!require(umap)) {
+  install.packages("umap")
+}
+
+library(umap)
+library(ggplot2)
+
+# Run UMAP
+umap_result <- umap(df.101[, -c(1, ncol(df.101))])
+
+# Create data frame for plotting
+plot_df <- data.frame(UMAP1 = umap_result$layout[,1],
+                      UMAP2 = umap_result$layout[,2],
+                      type = df.101$type)
+
+# Plot UMAP
+ggplot(plot_df, aes(x = UMAP1, y = UMAP2, fill = type)) +
+  geom_point(shape = 21, color = "white", size = 2) +
+  labs(x = "UMAP1", y = "UMAP2", fill = "type") +
+  theme_classic()
+```
+
+```{r Fig3_Supp_kmeans4_rank_surv}
+# Perform k-means clustering
+km_result <- kmeans(scores, centers=4,nstart = 50,iter.max = 250)  # change 'centers' to the number of clusters you want
+
+# Now, km_result$cluster contains the cluster assignments for each sample
+# You can add this to your original data frame
+df.102 <- df.101
+df.102$cluster <- as.character(km_result$cluster)
+
+df.clin_kmeans<-inner_join(df.clin,df.102,by = c("bcr_patient_barcode"="tcgaid")) 
+# Create survival object
+surv_obj <- Surv(time = df.clin_kmeans$OS.time, event = df.clin_kmeans$OS)
+
+# Fit survival model
+fit <- survfit(surv_obj ~ df.clin_kmeans$cluster)
+
+# Plot survival model
+ggsurvplot(fit, data = df.clin_kmeans,risk.table = T, 
+           pval = TRUE, # display p-value of log-rank test
+           pval.method = TRUE,
+           conf.int = TRUE, 
+           risk.table.col = "strata", # change risk table color by groups
+           linetype = "strata", # change line type by groups
+           xlab = "Time in days", # Customize X-axis label
+           ylab = "Survival probability", # Customize Y-axis label
+           title = "Kaplan-Meier Survival Curve", # Add title
+           legend = "bottom", # Change legend position
+           ggtheme = theme_minimal(), # Add theme
+           palette = "npg"
+          )
+
+```
+
+```{r Fig3E_testOfTime}
+
+best_model <- NULL
+best_wss <- Inf
+
+for (i in 1:10) {
+  set.seed(i)
+  model <- kmeans(scores, centers = i)
+  if (model$tot.withinss < best_wss) {
+    best_model <- model
+    best_wss <- model$tot.withinss
+  }
+}
+
+kmeans_result <- best_model 
+
+df.103 <- df.101
+df.103$cluster <- as.character(km_result$cluster)
+
+df.clin_kmeans<-inner_join(df.clin,df.103,by = c("bcr_patient_barcode"="tcgaid")) 
+
+model <- coxph( Surv(OS.time, OS) ~  cluster + age_at_initial_pathologic_diagnosis,
+                data = df.clin_kmeans )
+modelplot<-ggforest(model)
+modelplot
+
+```
