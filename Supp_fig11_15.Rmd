@@ -1,0 +1,984 @@
+---
+title: "Supp_fig11_15"
+output: html_document
+date: "2024-02-15"
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(ggpubr)
+library(ggrepel)
+library(ggstatsplot)
+library(ggeasy)
+library(dndscv)
+library(readxl)
+library(readr)
+library(maftools)
+library(readxl)
+library(tidyverse)
+library(ComplexHeatmap)
+library(data.table)
+library(Hmisc)
+library(pheatmap)
+library(openxlsx)
+```
+
+
+
+```{r load and prepare data}
+load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/drivergenes.RData")
+load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/list_names.RData")
+load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/primary_data.RData")
+load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/annotated_normal_data.RData")
+
+load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/RefCDS_human_GRCh37_dNdScv.0.1.0.rda")
+refdb_run =RefCDS
+
+#stratify hallmark mutations
+library(readxl)
+
+Gene_list_of_cancer_hallmarks <- read_excel("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/Gene_list_of_cancer_hallmarks.xlsx")
+
+#convert genes to ensembl id
+library(biomaRt)
+hsapiens_genes <- getBM(attributes = c("ensembl_gene_id", 
+                                       "hgnc_symbol"),
+                        mart = useMart("ensembl", dataset = "hsapiens_gene_ensembl"))
+
+all_hallmarks <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$ALL) 
+all_hallmarks<-  unique(all_hallmarks$hgnc_symbol)
+all_hallmarks<-as.data.frame(all_hallmarks)
+
+angiogenesis <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$ANGIOGENESIS) 
+angiogenesis<-  unique(angiogenesis$hgnc_symbol)
+angiogenesis<-as.data.frame(angiogenesis)
+angiogenesis<-angiogenesis%>%filter(angiogenesis %in% list_names$list_names)
+
+
+metabolism <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$METABOLISM) 
+metabolism<-  unique(metabolism$hgnc_symbol)
+metabolism<-as.data.frame(metabolism)
+
+
+death <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$DEATH) 
+death<-  unique(death$hgnc_symbol)
+death<-as.data.frame(death)
+
+proliferation <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$PROLIFERATION) 
+proliferation<-  unique(proliferation$hgnc_symbol)
+proliferation<-as.data.frame(proliferation)
+
+
+inflammation <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$INFLAMMATION) 
+inflammation<-  unique(inflammation$hgnc_symbol)
+inflammation<-as.data.frame(inflammation)
+
+metastasis <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$METASTASIS) 
+metastasis<-  unique(metastasis$hgnc_symbol)
+metastasis<-as.data.frame(metastasis)
+
+immortality <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$IMMORTALITY) 
+immortality<-  unique(immortality$hgnc_symbol)
+immortality<-as.data.frame(immortality)
+
+
+growth <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$GROWTH) 
+growth<-  unique(growth$hgnc_symbol)
+growth<-as.data.frame(growth)
+
+
+immune <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$IMMUNE) 
+immune<-  unique(immune$hgnc_symbol)
+immune<-as.data.frame(immune)
+
+mutations <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$MUTATIONS) 
+mutations<-  unique(mutations$hgnc_symbol)
+mutations<-as.data.frame(mutations)
+
+
+escape_genes = readxl::read_xlsx("/Users/luciegourmet/Dropbox/Projects/DriverLandscape/Data/SuppTable3_escapegenes_Aug2021.xlsx")
+colnames(escape_genes)<-"escape"
+
+#filter
+death<-death%>%filter(death %in% list_names$list_names)
+driver<-drivergenes%>%filter(drivergenes %in% list_names$list_names)
+escape<-escape_genes%>%filter(escape %in% list_names$list_names)
+growth<-growth%>%filter(growth %in% list_names$list_names)
+immune<-immune%>%filter(immune %in% list_names$list_names)
+immortality<-immortality%>%filter(immortality %in% list_names$list_names)
+inflammation<-inflammation%>%filter(inflammation %in% list_names$list_names)
+metabolism<-metabolism%>%filter(metabolism %in% list_names$list_names)
+metastasis<-metastasis%>%filter(metastasis %in% list_names$list_names)
+mutations<-mutations%>%filter(mutations %in% list_names$list_names)
+proliferation<-proliferation%>%filter(proliferation %in% list_names$list_names)
+angiogenesis<-angiogenesis%>%filter(angiogenesis %in% list_names$list_names)
+```
+
+
+
+```{r SF11  dnds correlation cancer types}
+#function to extract mean dnds
+plotdnds<-function(x){
+  df_1<-x$globaldnds
+  Globaldnds<- as.data.frame(df_1[1,2])
+  return(Globaldnds)
+}
+
+#function to get mean dnds from every cancer type
+get_global_dnds<-function(cancer){
+  #fiter cancer type
+  primary_plot<-primary_data%>%dplyr::filter(gene %in% list_names$list_names)%>%dplyr::filter(cancertype == cancer)
+  
+  #get global dnds for each hallmark
+  df_relevant_angiogenesis_dndscv<-dndscv(primary_plot, refdb = refdb_run ,cv=NULL, gene_list =angiogenesis$angiogenesis)
+  p_angiogenesis<-plotdnds(x =df_relevant_angiogenesis_dndscv)
+  
+  df_relevant_metabolism_dndscv<-dndscv(primary_plot, refdb = refdb_run ,cv=NULL, gene_list =metabolism$metabolism)
+  p_metabolism<-plotdnds(x =df_relevant_metabolism_dndscv)
+  
+  df_relevant_death_dndscv<-dndscv(primary_plot, refdb = refdb_run ,cv=NULL, gene_list =death$death)
+  p_death<-plotdnds(x =df_relevant_death_dndscv)
+  
+  df_relevant_proliferation_dndscv<-dndscv(primary_plot, refdb = refdb_run ,cv=NULL, gene_list =proliferation$proliferation)
+  p_proliferation<-plotdnds(x =df_relevant_proliferation_dndscv)
+  
+  df_relevant_inflammation_dndscv<-dndscv(primary_plot, refdb = refdb_run ,cv=NULL, gene_list =inflammation$inflammation)
+  p_inflammation<-plotdnds(x =df_relevant_inflammation_dndscv)
+  
+  df_relevant_metastasis_dndscv<-dndscv(primary_plot, refdb = refdb_run ,cv=NULL,gene_list =metastasis$metastasis)
+  p_metastasis<-plotdnds(x =df_relevant_metastasis_dndscv)
+  
+  df_relevant_immortality_dndscv<-dndscv(primary_plot, refdb = refdb_run ,cv=NULL, gene_list =immortality$immortality)
+  p_immortality<-plotdnds(x =df_relevant_immortality_dndscv)
+  
+  df_relevant_growth_dndscv<-dndscv(primary_plot, refdb = refdb_run ,cv=NULL, gene_list =growth$growth)
+  p_growth<-plotdnds(x =df_relevant_growth_dndscv)
+  
+  df_relevant_immune_dndscv<-dndscv(primary_plot, refdb = refdb_run ,cv=NULL, gene_list =immune$immune)
+  p_immune<-plotdnds(x =df_relevant_immune_dndscv)
+  
+  df_relevant_mutations_dndscv<-dndscv(primary_plot, refdb = refdb_run ,cv=NULL, gene_list =mutations$mutations)
+  p_mutations<-plotdnds(x =df_relevant_mutations_dndscv)
+  
+  dnds<-rbind(p_metabolism, p_death, p_proliferation, p_inflammation, p_metastasis, p_immortality, p_growth, p_immune, p_mutations, p_angiogenesis)
+  return(dnds)
+}
+
+#run function
+dnds_ACC<-get_global_dnds(cancer="ACC")
+dnds_BRCA<-get_global_dnds(cancer="BRCA")
+dnds_BLCA<-get_global_dnds(cancer="BLCA")
+dnds_DLBC<-get_global_dnds(cancer="DLBC")
+dnds_COAD<-get_global_dnds(cancer="COAD")
+dnds_ESCA<-get_global_dnds(cancer="ESCA")
+dnds_GBM<-get_global_dnds(cancer="GBM")
+dnds_HNSC<-get_global_dnds(cancer="HNSC")
+dnds_KIRP<-get_global_dnds(cancer="KIRP")
+dnds_KIRC<-get_global_dnds(cancer="KIRC")
+dnds_KICH<-get_global_dnds(cancer="KICH")
+dnds_LIHC<-get_global_dnds(cancer="LIHC")
+dnds_LGG<-get_global_dnds(cancer="LGG")
+dnds_LUAD<-get_global_dnds(cancer="LUAD")
+dnds_LUSC<-get_global_dnds(cancer="LUSC")
+dnds_MESO<-get_global_dnds(cancer="MESO")
+dnds_OV<-get_global_dnds(cancer="OV")
+dnds_PAAD<-get_global_dnds(cancer="PAAD")
+dnds_PRAD<-get_global_dnds(cancer="PRAD")
+dnds_PCPG<-get_global_dnds(cancer="PCPG")
+dnds_READ<-get_global_dnds(cancer="READ")
+dnds_STAD<-get_global_dnds(cancer="STAD")
+dnds_SARC<-get_global_dnds(cancer="SARC")
+dnds_SKCM<-get_global_dnds(cancer="SKCM")
+dnds_TGCT<-get_global_dnds(cancer="TGCT")
+dnds_THCA<-get_global_dnds(cancer="THCA")
+dnds_THYM<-get_global_dnds(cancer="THYM")
+dnds_UCEC<-get_global_dnds(cancer="UCEC")
+dnds_UCS<-get_global_dnds(cancer="UCS")
+dnds_UVM<-get_global_dnds(cancer="UVM")
+dnds_CESC<-get_global_dnds(cancer="CESC")
+dnds_CHOL<-get_global_dnds(cancer="CHOL")
+
+colnames(dnds_ACC)<-"ACC"
+colnames(dnds_BRCA)<-"BRCA"
+colnames(dnds_BLCA)<-"BLCA"
+colnames(dnds_DLBC)<-"DLBC"
+colnames(dnds_COAD)<-"COAD"
+colnames(dnds_ESCA)<-"ESCA"
+colnames(dnds_GBM)<-"GBM"
+colnames(dnds_HNSC)<-"HNSC"
+colnames(dnds_KIRP)<-"KIRP"
+colnames(dnds_KIRC)<-"KIRC"
+colnames(dnds_KICH)<-"KICH"
+colnames(dnds_LIHC)<-"LIHC"
+colnames(dnds_LGG)<-"LGG"
+colnames(dnds_LUAD)<-"LUAD"
+colnames(dnds_LUSC)<-"LUSC"
+colnames(dnds_MESO)<-"MESO"
+colnames(dnds_OV)<-"OV"
+colnames(dnds_PAAD)<-"PAAD"
+colnames(dnds_PRAD)<-"PRAD"
+colnames(dnds_PCPG)<-"PCPG"
+colnames(dnds_READ)<-"READ"
+colnames(dnds_STAD)<-"STAD"
+colnames(dnds_SARC)<-"SARC"
+colnames(dnds_SKCM)<-"SKCM"
+colnames(dnds_TGCT)<-"TGCT"
+colnames(dnds_THCA)<-"THCA"
+colnames(dnds_THYM)<-"THYM"
+colnames(dnds_UCEC)<-"UCEC"
+colnames(dnds_UCS)<-"UCS"
+colnames(dnds_UVM)<-"UVM"
+colnames(dnds_CESC)<-"CESC"
+colnames(dnds_CHOL)<-"CHOL"
+
+
+cancer_types_dnds<-cbind(dnds_ACC, dnds_BRCA, dnds_BLCA, dnds_DLBC, dnds_COAD, dnds_ESCA, dnds_GBM, dnds_GBM, dnds_HNSC, dnds_KIRP, dnds_KIRC, dnds_KICH, dnds_LIHC, dnds_LGG, dnds_LUAD, dnds_LUSC, dnds_CHOL, dnds_OV, dnds_PAAD, dnds_PRAD, dnds_PCPG, dnds_READ, dnds_STAD, dnds_SARC, dnds_SKCM, dnds_TGCT, dnds_THCA, dnds_THYM, dnds_UCEC, dnds_UCS, dnds_UVM, dnds_CESC, dnds_MESO)
+
+
+cor_matrix <- cor(cancer_types_dnds, method = "spearman")
+library(pheatmap)
+pheatmap(cor_matrix, cluster_rows = TRUE, cluster_cols = TRUE, upper = FALSE)
+p<-pheatmap(cor_matrix, scale = "none", cluster_rows = TRUE, cluster_cols = TRUE, 
+         upper = TRUE, legend_title = "Spearman correlation")
+
+ggsave("Correlation_cancer_types_dnds.pdf",plot = p, units = "cm",height = 16, width = 20)
+```
+
+
+
+```{r SF12 without TP53 correlation}
+#function to extract VAF of every cancer hallmark
+library("plotrix")
+data_summary <- function(data, varname, groupnames){
+  require(plyr)
+  summary_func <- function(x, col){
+    c(mean = mean(x[[col]], na.rm=TRUE),
+      std.error = std.error(x[[col]], na.rm=TRUE))
+  }
+  data_sum<-ddply(data, groupnames, .fun=summary_func,
+                  varname)
+  data_sum <- rename(data_sum, c("mean" = varname))
+ return(data_sum)
+}
+extract_VAF <- function(cancer="GBM"){
+primary_plot<-primary_data%>%dplyr::filter(impact %in% c("Missense", "Nonsense","Essential_Splice","Stop_loss"))%>%dplyr::filter(gene %in% list_names$list_names)%>%dplyr::filter(cancertype == cancer)%>%filter(!gene %in% TP53)
+#create 
+df_angiogenesis<-primary_plot%>% dplyr::filter(angiogenesis=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, angiogenesis)
+df_angiogenesis$angiogenesis<-"angiogenesis"
+colnames(df_angiogenesis)[colnames(df_angiogenesis) == 'angiogenesis'] <- 'category'
+
+df_mutations<-primary_plot%>% filter(mutations=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, mutations)
+df_mutations$mutations<-"genome instability"
+colnames(df_mutations)[colnames(df_mutations) == 'mutations'] <- 'category'
+
+df_growth<-primary_plot%>% filter(growth=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, growth)
+df_growth$growth<-"growth"
+colnames(df_growth)[colnames(df_growth) == 'growth'] <- 'category'
+
+df_immortality<-primary_plot%>% filter(immortality=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, immortality)
+df_immortality$immortality<-"immortality"
+colnames(df_immortality)[colnames(df_immortality) == 'immortality'] <- 'category'
+
+df_metastasis<-primary_plot%>% filter(metastasis=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, metastasis)
+df_metastasis$metastasis<-"metastasis"
+colnames(df_metastasis)[colnames(df_metastasis) == 'metastasis'] <- 'category'
+
+
+df_inflammation<-primary_plot%>% filter(inflammation=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, inflammation)
+df_inflammation$inflammation<-"inflammation"
+colnames(df_inflammation)[colnames(df_inflammation) == 'inflammation'] <- 'category'
+
+df_proliferation<-primary_plot%>% filter(proliferation=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, proliferation)
+df_proliferation$proliferation<-"proliferation"
+colnames(df_proliferation)[colnames(df_proliferation) == 'proliferation'] <- 'category'
+
+df_death<-primary_plot%>% filter(death=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, death)
+df_death$death<-"death"
+colnames(df_death)[colnames(df_death) == 'death'] <- 'category'
+
+df_metabolism<-primary_plot%>% filter(metabolism=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, metabolism)
+df_metabolism$metabolism<-"metabolism"
+colnames(df_metabolism)[colnames(df_metabolism) == 'metabolism'] <- 'category'
+
+df_immune<-primary_plot%>% filter(immune=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, immune)
+df_immune$immune<-"immune evasion"
+colnames(df_immune)[colnames(df_immune) == 'immune'] <- 'category'
+
+
+df_density<-rbind(df_metabolism, df_death, df_proliferation, df_inflammation, df_metastasis, df_immortality, df_growth, df_immune, df_mutations, df_angiogenesis)
+
+df_VAF<- data_summary(df_density, varname="VAF", 
+                    groupnames= "category")
+df_VAF<-as.data.frame(df_VAF[,2 ])
+return(df_VAF)
+}
+
+vaf_ACC<-extract_VAF(cancer="ACC")
+vaf_BRCA<-extract_VAF(cancer="BRCA")
+vaf_BLCA<-extract_VAF(cancer="BLCA")
+vaf_DLBC<-extract_VAF(cancer="DLBC")
+vaf_COAD<-extract_VAF(cancer="COAD")
+vaf_ESCA<-extract_VAF(cancer="ESCA")
+vaf_GBM<-extract_VAF(cancer="GBM")
+vaf_HNSC<-extract_VAF(cancer="HNSC")
+vaf_KIRP<-extract_VAF(cancer="KIRP")
+vaf_KIRC<-extract_VAF(cancer="KIRC")
+vaf_KICH<-extract_VAF(cancer="KICH")
+vaf_LIHC<-extract_VAF(cancer="LIHC")
+vaf_LGG<-extract_VAF(cancer="LGG")
+vaf_LUAD<-extract_VAF(cancer="LUAD")
+vaf_LUSC<-extract_VAF(cancer="LUSC")
+vaf_MESO<-extract_VAF(cancer="MESO")
+vaf_OV<-extract_VAF(cancer="OV")
+vaf_PAAD<-extract_VAF(cancer="PAAD")
+vaf_PRAD<-extract_VAF(cancer="PRAD")
+vaf_PCPG<-extract_VAF(cancer="PCPG")
+vaf_READ<-extract_VAF(cancer="READ")
+vaf_STAD<-extract_VAF(cancer="STAD")
+vaf_SARC<-extract_VAF(cancer="SARC")
+vaf_SKCM<-extract_VAF(cancer="SKCM")
+vaf_TGCT<-extract_VAF(cancer="TGCT")
+vaf_THCA<-extract_VAF(cancer="THCA")
+vaf_THYM<-extract_VAF(cancer="THYM")
+vaf_UCEC<-extract_VAF(cancer="UCEC")
+vaf_UCS<-extract_VAF(cancer="UCS")
+vaf_UVM<-extract_VAF(cancer="UVM")
+vaf_CESC<-extract_VAF(cancer="CESC")
+vaf_CHOL<-extract_VAF(cancer="CHOL")
+
+#rename column with cancer type
+colnames(vaf_ACC)<-"ACC"
+colnames(vaf_BRCA)<-"BRCA"
+colnames(vaf_BLCA)<-"BLCA"
+colnames(vaf_DLBC)<-"DLBC"
+colnames(vaf_COAD)<-"COAD"
+colnames(vaf_ESCA)<-"ESCA"
+colnames(vaf_GBM)<-"GBM"
+colnames(vaf_HNSC)<-"HNSC"
+colnames(vaf_KIRP)<-"KIRP"
+colnames(vaf_KIRC)<-"KIRC"
+colnames(vaf_KICH)<-"KICH"
+colnames(vaf_LIHC)<-"LIHC"
+colnames(vaf_LGG)<-"LGG"
+colnames(vaf_LUAD)<-"LUAD"
+colnames(vaf_LUSC)<-"LUSC"
+colnames(vaf_MESO)<-"MESO"
+colnames(vaf_OV)<-"OV"
+colnames(vaf_PAAD)<-"PAAD"
+colnames(vaf_PRAD)<-"PRAD"
+colnames(vaf_PCPG)<-"PCPG"
+colnames(vaf_READ)<-"READ"
+colnames(vaf_STAD)<-"STAD"
+colnames(vaf_SARC)<-"SARC"
+colnames(vaf_SKCM)<-"SKCM"
+colnames(vaf_TGCT)<-"TGCT"
+colnames(vaf_THCA)<-"THCA"
+colnames(vaf_THYM)<-"THYM"
+colnames(vaf_UCEC)<-"UCEC"
+colnames(vaf_UCS)<-"UCS"
+colnames(vaf_UVM)<-"UVM"
+colnames(vaf_CESC)<-"CESC"
+colnames(vaf_CHOL)<-"CHOL"
+
+cancer_types_vaf<-cbind(vaf_ACC, vaf_BRCA, vaf_BLCA, vaf_DLBC, vaf_COAD, vaf_ESCA, vaf_GBM, vaf_HNSC, vaf_KIRP, vaf_KIRC, vaf_KICH, vaf_LIHC, vaf_LGG, vaf_LUAD, vaf_LUSC, vaf_CHOL, vaf_OV, vaf_PAAD, vaf_PRAD, vaf_PCPG, vaf_READ, vaf_STAD, vaf_SARC, vaf_SKCM, vaf_TGCT, vaf_THCA, vaf_THYM, vaf_UCEC, vaf_UCS, vaf_UVM, vaf_CESC, vaf_MESO)
+
+
+
+cor_matrix <- cor(cancer_types_vaf, method = "spearman")
+library(pheatmap)
+breaks <- seq(-1, 1, length.out = 100)
+p<-pheatmap(cor_matrix, cluster_rows = TRUE, cluster_cols = TRUE, upper = FALSE, breaks = breaks)
+
+
+ggsave("Correlation_cancer_types_VAF_without_TP53.pdf",plot = p, units = "cm",height = 16, width = 20)
+
+```
+
+
+
+```{r SF13 correlation VAF dnds (part 1: VAF)}
+#function to extract VAF of every cancer hallmark
+library("plotrix")
+data_summary <- function(data, varname, groupnames){
+  require(plyr)
+  summary_func <- function(x, col){
+    c(mean = mean(x[[col]], na.rm=TRUE),
+      std.error = std.error(x[[col]], na.rm=TRUE))
+  }
+  data_sum<-ddply(data, groupnames, .fun=summary_func,
+                  varname)
+  data_sum <- rename(data_sum, c("mean" = varname))
+ return(data_sum)
+}
+extract_VAF <- function(cancer="GBM"){
+primary_plot<-primary_data%>%dplyr::filter(impact %in% c("Missense", "Nonsense","Essential_Splice","Stop_loss"))%>%dplyr::filter(gene %in% list_names$list_names)%>%dplyr::filter(cancertype == cancer)
+#create 
+df_angiogenesis<-primary_plot%>% dplyr::filter(angiogenesis=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, angiogenesis)
+df_angiogenesis$angiogenesis<-"angiogenesis"
+colnames(df_angiogenesis)[colnames(df_angiogenesis) == 'angiogenesis'] <- 'category'
+
+df_mutations<-primary_plot%>% filter(mutations=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, mutations)
+df_mutations$mutations<-"genome instability"
+colnames(df_mutations)[colnames(df_mutations) == 'mutations'] <- 'category'
+
+df_growth<-primary_plot%>% filter(growth=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, growth)
+df_growth$growth<-"growth"
+colnames(df_growth)[colnames(df_growth) == 'growth'] <- 'category'
+
+df_immortality<-primary_plot%>% filter(immortality=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, immortality)
+df_immortality$immortality<-"immortality"
+colnames(df_immortality)[colnames(df_immortality) == 'immortality'] <- 'category'
+
+df_metastasis<-primary_plot%>% filter(metastasis=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, metastasis)
+df_metastasis$metastasis<-"metastasis"
+colnames(df_metastasis)[colnames(df_metastasis) == 'metastasis'] <- 'category'
+
+
+df_inflammation<-primary_plot%>% filter(inflammation=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, inflammation)
+df_inflammation$inflammation<-"inflammation"
+colnames(df_inflammation)[colnames(df_inflammation) == 'inflammation'] <- 'category'
+
+df_proliferation<-primary_plot%>% filter(proliferation=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, proliferation)
+df_proliferation$proliferation<-"proliferation"
+colnames(df_proliferation)[colnames(df_proliferation) == 'proliferation'] <- 'category'
+
+df_death<-primary_plot%>% filter(death=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, death)
+df_death$death<-"death"
+colnames(df_death)[colnames(df_death) == 'death'] <- 'category'
+
+df_metabolism<-primary_plot%>% filter(metabolism=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, metabolism)
+df_metabolism$metabolism<-"metabolism"
+colnames(df_metabolism)[colnames(df_metabolism) == 'metabolism'] <- 'category'
+
+df_immune<-primary_plot%>% filter(immune=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, immune)
+df_immune$immune<-"immune evasion"
+colnames(df_immune)[colnames(df_immune) == 'immune'] <- 'category'
+
+
+df_density<-rbind(df_metabolism, df_death, df_proliferation, df_inflammation, df_metastasis, df_immortality, df_growth, df_immune, df_mutations, df_angiogenesis)
+
+df_VAF<- data_summary(df_density, varname="VAF", 
+                    groupnames= "category")
+df_VAF<-as.data.frame(df_VAF[,2 ])
+return(df_VAF)
+}
+
+
+
+
+
+vaf_ACC<-extract_VAF(cancer="ACC")
+vaf_BRCA<-extract_VAF(cancer="BRCA")
+vaf_BLCA<-extract_VAF(cancer="BLCA")
+vaf_DLBC<-extract_VAF(cancer="DLBC")
+vaf_COAD<-extract_VAF(cancer="COAD")
+vaf_ESCA<-extract_VAF(cancer="ESCA")
+vaf_GBM<-extract_VAF(cancer="GBM")
+vaf_HNSC<-extract_VAF(cancer="HNSC")
+vaf_KIRP<-extract_VAF(cancer="KIRP")
+vaf_KIRC<-extract_VAF(cancer="KIRC")
+vaf_KICH<-extract_VAF(cancer="KICH")
+vaf_LIHC<-extract_VAF(cancer="LIHC")
+vaf_LGG<-extract_VAF(cancer="LGG")
+vaf_LUAD<-extract_VAF(cancer="LUAD")
+vaf_LUSC<-extract_VAF(cancer="LUSC")
+vaf_MESO<-extract_VAF(cancer="MESO")
+vaf_OV<-extract_VAF(cancer="OV")
+vaf_PAAD<-extract_VAF(cancer="PAAD")
+vaf_PRAD<-extract_VAF(cancer="PRAD")
+vaf_PCPG<-extract_VAF(cancer="PCPG")
+vaf_READ<-extract_VAF(cancer="READ")
+vaf_STAD<-extract_VAF(cancer="STAD")
+vaf_SARC<-extract_VAF(cancer="SARC")
+vaf_SKCM<-extract_VAF(cancer="SKCM")
+vaf_TGCT<-extract_VAF(cancer="TGCT")
+vaf_THCA<-extract_VAF(cancer="THCA")
+vaf_THYM<-extract_VAF(cancer="THYM")
+vaf_UCEC<-extract_VAF(cancer="UCEC")
+vaf_UCS<-extract_VAF(cancer="UCS")
+vaf_UVM<-extract_VAF(cancer="UVM")
+vaf_CESC<-extract_VAF(cancer="CESC")
+
+vaf_CHOL<-extract_VAF(cancer="CHOL")
+
+#rename column with cancer type
+colnames(vaf_ACC)<-"ACC"
+colnames(vaf_BRCA)<-"BRCA"
+colnames(vaf_BLCA)<-"BLCA"
+colnames(vaf_DLBC)<-"DLBC"
+colnames(vaf_COAD)<-"COAD"
+colnames(vaf_ESCA)<-"ESCA"
+colnames(vaf_GBM)<-"GBM"
+colnames(vaf_HNSC)<-"HNSC"
+colnames(vaf_KIRP)<-"KIRP"
+colnames(vaf_KIRC)<-"KIRC"
+colnames(vaf_KICH)<-"KICH"
+colnames(vaf_LIHC)<-"LIHC"
+colnames(vaf_LGG)<-"LGG"
+colnames(vaf_LUAD)<-"LUAD"
+colnames(vaf_LUSC)<-"LUSC"
+colnames(vaf_MESO)<-"MESO"
+colnames(vaf_OV)<-"OV"
+colnames(vaf_PAAD)<-"PAAD"
+colnames(vaf_PRAD)<-"PRAD"
+colnames(vaf_PCPG)<-"PCPG"
+colnames(vaf_READ)<-"READ"
+colnames(vaf_STAD)<-"STAD"
+colnames(vaf_SARC)<-"SARC"
+colnames(vaf_SKCM)<-"SKCM"
+colnames(vaf_TGCT)<-"TGCT"
+colnames(vaf_THCA)<-"THCA"
+colnames(vaf_THYM)<-"THYM"
+colnames(vaf_UCEC)<-"UCEC"
+colnames(vaf_UCS)<-"UCS"
+colnames(vaf_UVM)<-"UVM"
+colnames(vaf_CESC)<-"CESC"
+colnames(vaf_CHOL)<-"CHOL"
+
+cancer_types_vaf<-cbind(vaf_ACC, vaf_BRCA, vaf_BLCA, vaf_DLBC, vaf_COAD, vaf_ESCA, vaf_GBM, vaf_HNSC, vaf_KIRP, vaf_KIRC, vaf_KICH, vaf_LIHC, vaf_LGG, vaf_LUAD, vaf_LUSC, vaf_CHOL, vaf_OV, vaf_PAAD, vaf_PRAD, vaf_PCPG, vaf_READ, vaf_STAD, vaf_SARC, vaf_SKCM, vaf_TGCT, vaf_THCA, vaf_THYM, vaf_UCEC, vaf_UCS, vaf_UVM, vaf_CESC, vaf_MESO)
+
+rownames(cancer_types_vaf)<-c("metabolism", "death", "proliferation", "inflammation", "metastasis", "immortality", "growth", "immune", "mutations", "angiogenesis")
+cancer_mean_VAF<-as.data.frame(t(cancer_types_vaf))
+cancer_mean_VAF <- cancer_mean_VAF[, sort(names(cancer_mean_VAF))]
+
+cancer_mean_VAF$cancer_type<-rownames(cancer_mean_VAF)
+
+library(openxlsx)
+write.xlsx(cancer_mean_VAF, "/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/cancer_mean_VAF.xlsx")
+
+
+cor_matrix <- cor(cancer_types_vaf, method = "spearman")
+library(pheatmap)
+breaks <- seq(-1, 1, length.out = 100)
+p<-pheatmap(cor_matrix, cluster_rows = TRUE, cluster_cols = TRUE, upper = FALSE, breaks = breaks)
+
+
+ggsave("Correlation_cancer_types_VAF.pdf",plot = p, units = "cm",height = 16, width = 20)
+
+#plot only significant correlations
+library(Hmisc)
+
+# Calculate Spearman correlation and p-values
+result <- rcorr(as.matrix(cancer_types_vaf), type="spearman")
+
+# Spearman correlation matrix
+cor_matrix <- result$r
+
+# Matrix of p-values
+p_values <- result$P
+
+
+# Choose a significance level
+# Assuming cor_matrix is your correlation matrix
+diag(cor_matrix) <- NA
+
+number_of_tests <- sum(!is.na(mask))  # Count the number of tests performed
+bonferroni_significance_level <- 0.05 / number_of_tests
+
+# Create a mask for significant and strong correlations using the Bonferroni corrected significance level
+mask <- (p_values < bonferroni_significance_level)
+
+
+# Apply the mask
+filtered_cor_matrix <- cor_matrix
+filtered_cor_matrix[!mask] <- NA  # Set non-significant or weak correlations to NA
+
+# Plot the heatmap
+library(pheatmap)
+breaks <- seq(-1, 1, length.out = 100)
+p <- pheatmap(filtered_cor_matrix, cluster_rows = FALSE, cluster_cols = FALSE, upper = FALSE, breaks = breaks)
+
+ggsave("Significant_correlation_cancer_types_VAF.pdf",plot = p, units = "cm",height = 16, width = 20)
+
+
+# Calculate Spearman correlation and p-values
+result <- rcorr(as.matrix(cancer_types_vaf), type="spearman")
+
+# Spearman correlation matrix
+cor_matrix <- result$r
+
+# Matrix of p-values
+p_values <- result$P
+
+# Adjust p-values using the Benjamin-Hochberg method
+adjusted_p_values <- p.adjust(p_values, method = "BH")
+
+# Ensure that adjusted_p_values is a matrix (if it's not already)
+if (!is.matrix(adjusted_p_values)) {
+  adjusted_p_values <- matrix(adjusted_p_values, nrow = nrow(p_values), ncol = ncol(p_values))
+}
+
+# Choose a significance level
+significance_level <- 0.05
+
+# Create a mask for significant correlations using the BH corrected significance level
+mask <- (adjusted_p_values < significance_level)
+
+# Set the diagonal of the mask to NA
+diag(mask) <- NA
+
+# Apply the mask
+filtered_cor_matrix <- cor_matrix
+filtered_cor_matrix[!mask] <- NA  # Set non-significant correlations to NA
+
+# Plot the heatmap
+breaks <- seq(-1, 1, length.out = 100)
+p <- pheatmap(filtered_cor_matrix, cluster_rows = FALSE, cluster_cols = FALSE, upper = FALSE, breaks = breaks)
+ggsave("Significant_correlation_cancer_types_VAF_BH_correction.pdf",plot = p, units = "cm",height = 16, width = 20)
+
+```
+
+
+
+```{r SF13 correlation VAF dnds (part 2: dnds)}
+
+#function to extract mean dnds
+plotdnds<-function(x){
+  df_1<-x$globaldnds
+  Globaldnds<- as.data.frame(df_1[1,2])
+  return(Globaldnds)
+}
+
+
+#function to get mean dnds from every cancer type
+get_global_dnds<-function(cancer){
+  #fiter cancer type
+  primary_plot<-primary_data%>%dplyr::filter(gene %in% list_names$list_names)%>%dplyr::filter(cancertype == cancer)
+  
+  #get global dnds for each hallmark
+  df_relevant_angiogenesis_dndscv<-dndscv(primary_plot, refdb = refdb_run ,cv=NULL, gene_list =angiogenesis$angiogenesis)
+  p_angiogenesis<-plotdnds(x =df_relevant_angiogenesis_dndscv)
+  
+  df_relevant_metabolism_dndscv<-dndscv(primary_plot, refdb = refdb_run ,cv=NULL, gene_list =metabolism$metabolism)
+  p_metabolism<-plotdnds(x =df_relevant_metabolism_dndscv)
+  
+  df_relevant_death_dndscv<-dndscv(primary_plot, refdb = refdb_run ,cv=NULL, gene_list =death$death)
+  p_death<-plotdnds(x =df_relevant_death_dndscv)
+  
+  df_relevant_proliferation_dndscv<-dndscv(primary_plot, refdb = refdb_run ,cv=NULL, gene_list =proliferation$proliferation)
+  p_proliferation<-plotdnds(x =df_relevant_proliferation_dndscv)
+  
+  df_relevant_inflammation_dndscv<-dndscv(primary_plot, refdb = refdb_run ,cv=NULL, gene_list =inflammation$inflammation)
+  p_inflammation<-plotdnds(x =df_relevant_inflammation_dndscv)
+  
+  df_relevant_metastasis_dndscv<-dndscv(primary_plot, refdb = refdb_run ,cv=NULL,gene_list =metastasis$metastasis)
+  p_metastasis<-plotdnds(x =df_relevant_metastasis_dndscv)
+  
+  df_relevant_immortality_dndscv<-dndscv(primary_plot, refdb = refdb_run ,cv=NULL, gene_list =immortality$immortality)
+  p_immortality<-plotdnds(x =df_relevant_immortality_dndscv)
+  
+  df_relevant_growth_dndscv<-dndscv(primary_plot, refdb = refdb_run ,cv=NULL, gene_list =growth$growth)
+  p_growth<-plotdnds(x =df_relevant_growth_dndscv)
+  
+  df_relevant_immune_dndscv<-dndscv(primary_plot, refdb = refdb_run ,cv=NULL, gene_list =immune$immune)
+  p_immune<-plotdnds(x =df_relevant_immune_dndscv)
+  
+  df_relevant_mutations_dndscv<-dndscv(primary_plot, refdb = refdb_run ,cv=NULL, gene_list =mutations$mutations)
+  p_mutations<-plotdnds(x =df_relevant_mutations_dndscv)
+  
+  dnds<-rbind(p_metabolism, p_death, p_proliferation, p_inflammation, p_metastasis, p_immortality, p_growth, p_immune, p_mutations, p_angiogenesis)
+  return(dnds)
+}
+
+#run function
+dnds_ACC<-get_global_dnds(cancer="ACC")
+dnds_BRCA<-get_global_dnds(cancer="BRCA")
+dnds_BLCA<-get_global_dnds(cancer="BLCA")
+dnds_DLBC<-get_global_dnds(cancer="DLBC")
+dnds_COAD<-get_global_dnds(cancer="COAD")
+dnds_ESCA<-get_global_dnds(cancer="ESCA")
+dnds_GBM<-get_global_dnds(cancer="GBM")
+dnds_HNSC<-get_global_dnds(cancer="HNSC")
+dnds_KIRP<-get_global_dnds(cancer="KIRP")
+dnds_KIRC<-get_global_dnds(cancer="KIRC")
+dnds_KICH<-get_global_dnds(cancer="KICH")
+dnds_LIHC<-get_global_dnds(cancer="LIHC")
+dnds_LGG<-get_global_dnds(cancer="LGG")
+dnds_LUAD<-get_global_dnds(cancer="LUAD")
+dnds_LUSC<-get_global_dnds(cancer="LUSC")
+dnds_MESO<-get_global_dnds(cancer="MESO")
+dnds_OV<-get_global_dnds(cancer="OV")
+dnds_PAAD<-get_global_dnds(cancer="PAAD")
+dnds_PRAD<-get_global_dnds(cancer="PRAD")
+dnds_PCPG<-get_global_dnds(cancer="PCPG")
+dnds_READ<-get_global_dnds(cancer="READ")
+dnds_STAD<-get_global_dnds(cancer="STAD")
+dnds_SARC<-get_global_dnds(cancer="SARC")
+dnds_SKCM<-get_global_dnds(cancer="SKCM")
+dnds_TGCT<-get_global_dnds(cancer="TGCT")
+dnds_THCA<-get_global_dnds(cancer="THCA")
+dnds_THYM<-get_global_dnds(cancer="THYM")
+dnds_UCEC<-get_global_dnds(cancer="UCEC")
+dnds_UCS<-get_global_dnds(cancer="UCS")
+dnds_UVM<-get_global_dnds(cancer="UVM")
+dnds_CESC<-get_global_dnds(cancer="CESC")
+dnds_CHOL<-get_global_dnds(cancer="CHOL")
+
+colnames(dnds_ACC)<-"ACC"
+colnames(dnds_BRCA)<-"BRCA"
+colnames(dnds_BLCA)<-"BLCA"
+colnames(dnds_DLBC)<-"DLBC"
+colnames(dnds_COAD)<-"COAD"
+colnames(dnds_ESCA)<-"ESCA"
+colnames(dnds_GBM)<-"GBM"
+colnames(dnds_HNSC)<-"HNSC"
+colnames(dnds_KIRP)<-"KIRP"
+colnames(dnds_KIRC)<-"KIRC"
+colnames(dnds_KICH)<-"KICH"
+colnames(dnds_LIHC)<-"LIHC"
+colnames(dnds_LGG)<-"LGG"
+colnames(dnds_LUAD)<-"LUAD"
+colnames(dnds_LUSC)<-"LUSC"
+colnames(dnds_MESO)<-"MESO"
+colnames(dnds_OV)<-"OV"
+colnames(dnds_PAAD)<-"PAAD"
+colnames(dnds_PRAD)<-"PRAD"
+colnames(dnds_PCPG)<-"PCPG"
+colnames(dnds_READ)<-"READ"
+colnames(dnds_STAD)<-"STAD"
+colnames(dnds_SARC)<-"SARC"
+colnames(dnds_SKCM)<-"SKCM"
+colnames(dnds_TGCT)<-"TGCT"
+colnames(dnds_THCA)<-"THCA"
+colnames(dnds_THYM)<-"THYM"
+colnames(dnds_UCEC)<-"UCEC"
+colnames(dnds_UCS)<-"UCS"
+colnames(dnds_UVM)<-"UVM"
+colnames(dnds_CESC)<-"CESC"
+colnames(dnds_CHOL)<-"CHOL"
+
+
+cancer_types_dnds<-cbind(dnds_ACC, dnds_BRCA, dnds_BLCA, dnds_DLBC, dnds_COAD, dnds_ESCA, dnds_GBM, dnds_GBM, dnds_HNSC, dnds_KIRP, dnds_KIRC, dnds_KICH, dnds_LIHC, dnds_LGG, dnds_LUAD, dnds_LUSC, dnds_CHOL, dnds_OV, dnds_PAAD, dnds_PRAD, dnds_PCPG, dnds_READ, dnds_STAD, dnds_SARC, dnds_SKCM, dnds_TGCT, dnds_THCA, dnds_THYM, dnds_UCEC, dnds_UCS, dnds_UVM, dnds_CESC, dnds_MESO)
+
+
+corr_matrix <- cor(cancer_types_vaf, cancer_types_dnds)
+p<-pheatmap(corr_matrix, scale = "none", cluster_rows = TRUE, cluster_cols = TRUE, 
+         upper = TRUE, legend_title = "Spearman correlation")
+ggsave("Correlation_cancer_types_dnds_vaf.pdf",plot = p, units = "cm",height = 16, width = 20)
+```
+
+```{r SF14 rank frequency without TP53}
+
+###Remove TP53 mutations
+primary_data<-primary_data%>%dplyr::filter(impact %in% c("Missense", "Nonsense","Essential_Splice","Stop_loss"))%>%dplyr::filter(gene %in% list_names$list_names)%>%dplyr::filter(!gene == "TP53")
+
+
+get_time<-function(x){
+  value<-mean(x)
+  return(value)
+}
+
+summary_func <- function(x, col){
+  c(mean = mean(x[[col]], na.rm=TRUE),
+    std.error = std.error(x[[col]], na.rm=TRUE))
+}
+
+list_id<-unique(primary_data$sampleID)
+all_patient_trajectories_cancer <- NULL
+i <- 0
+for(sample in list_id){
+  i <- i+1
+  print(i)
+  print(sample)
+  #p_id<-list_id[i]
+  #patient_id<-unlist(c(p_id,p_id,p_id,p_id,p_id,p_id,p_id,p_id,p_id,p_id,p_id,p_id))
+  #df<-LUSC_data%>%filter(sampleID == "sample")
+  p_id<-list_id[i]
+  patient_id<-unlist(c(p_id,p_id,p_id,p_id,p_id,p_id,p_id,p_id,p_id,p_id))
+  df<-primary_data%>%filter(sampleID %in% unique(patient_id))
+  
+  #filter hallmarks
+  vaf_angiogenesis<-df%>% filter(angiogenesis=="YES")
+  vaf_death<-df%>% filter(death=="YES")
+  vaf_growth<-df%>% filter(growth=="YES")
+  vaf_immortality<-df%>% filter(immortality=="YES")
+  vaf_immune<-df%>% filter(immune=="YES")
+  vaf_inflammation<-df%>% filter(inflammation=="YES")
+  vaf_metabolism<-df%>% filter(metabolism=="YES")
+  vaf_metastasis<-df%>% filter(metastasis=="YES")
+  vaf_mutations<-df%>% filter(mutations=="YES")
+  vaf_proliferation<-df%>% filter(proliferation=="YES")
+  
+  #get vaf
+  angiogenesis<-get_time(vaf_angiogenesis$VAF)
+  death<-get_time(vaf_death$VAF)
+  growth<-get_time(vaf_growth$VAF)
+  immortality<-get_time(vaf_immortality$VAF)
+  immune<-get_time(vaf_immune$VAF)
+  inflammation<-get_time(vaf_inflammation$VAF)
+  metabolism<-get_time(vaf_metabolism$VAF)
+  metastasis<-get_time(vaf_metastasis$VAF)
+  mutations<-get_time(vaf_mutations$VAF)
+  proliferation<-get_time(vaf_proliferation$VAF)
+  
+  vaf<-data.frame(angiogenesis, metabolism, death, proliferation, inflammation, metastasis, immortality, growth, immune, mutations)
+  
+  
+  
+  all_patient_trajectories_cancer <- rbind(all_patient_trajectories_cancer, vaf)
+}
+all_patient_trajectories_cancer_filt_TP53<-all_patient_trajectories_cancer
+save(all_patient_trajectories_cancer_filt_TP53, file="all_patient_trajectories_cancer_filt_TP53.RData")
+
+
+#All mean VAF calculated for each patient
+all_patient_trajectories_cancer_filt_TP53
+
+# Calculate the number of zeros in each row
+num_zeros <- apply(all_patient_trajectories_cancer, 1, function(row) sum(row == 0))
+
+# Remove rows where 3 or more elements are zero
+all_patient_trajectories_cancer_filt <- all_patient_trajectories_cancer[num_zeros < 2, ]
+
+# Dont removre rows and keep all the data
+all_patient_trajectories_cancer_RANK<-t(as.data.frame(apply(all_patient_trajectories_cancer,1,function(x) rank(-x, ties.method = "min"))))
+
+all_patient_trajectories_cancer_RANK_filt<-t(as.data.frame(apply(all_patient_trajectories_cancer_filt,1,function(x) rank(-x, ties.method = "min"))))
+
+
+all_patient_trajectories_cancer_RANK_filt
+
+# 1. Compute proportions
+prop_df <- as.data.frame(all_patient_trajectories_cancer_RANK_filt) %>%
+  gather(hallmark, rank) %>% 
+  group_by(rank, hallmark) %>% 
+  summarise(count = n()) %>% 
+  mutate(proportion = count / sum(count)) 
+
+# 2. Plot proportions
+p101<-ggplot(prop_df, aes(x = rank, y = proportion, fill = hallmark)) +
+  geom_bar(stat = "identity", position = "stack") +
+  theme_minimal() +
+  labs(x = "Rank", y = "Proportion", fill = "Hallmark")+
+  facet_wrap(~hallmark, scales = "free_y") +
+  labs(x = "Rank", y = "Proportion") +
+  theme_minimal() 
+p101
+#ggsave(filename = "~/Dropbox/PI_position/Projects/Aim2_HallmarkTime/Figures/Fig3b_Ranksperhallmark.pdf",plot = p101, width = 8, height = 8)
+ggsave("Distribution_filtering_TP53.pdf",plot = p101, units = "cm",height = 30, width = 30)
+```
+
+
+
+
+
+
+```{r SF15 oncoprint genome instability plot}
+load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/primary_data.RData")
+# Function to convert list-type columns to character vectors
+convert_list_columns <- function(dataframe) {
+  for (col_name in names(dataframe)) {
+    if (is.list(dataframe[[col_name]])) {
+      # Convert the list column to character vector by pasting elements
+      dataframe[[col_name]] <- sapply(dataframe[[col_name]], paste, collapse = ";")
+    }
+  }
+  return(dataframe)
+}
+
+
+hallmarks_list <- list(
+  ANGIOGENESIS = angiogenesis$angiogenesis,
+  METABOLISM = metabolism$metabolism,
+  DEATH = death$death,
+  PROLIFERATION = proliferation$proliferation,
+  INFLAMMATION = inflammation$inflammation,
+  METASTASIS = metastasis$metastasis,
+  IMMORTALITY = immortality$immortality,
+  GROWTH = growth$growth,
+  IMMUNE = immune$immune,
+  MUTATIONS = mutations$mutations
+)
+
+# Function to convert list-type columns to character vectors
+convert_list_columns <- function(dataframe) {
+  for (col_name in names(dataframe)) {
+    if (is.list(dataframe[[col_name]])) {
+      # Convert the list column to character vector by pasting elements
+      dataframe[[col_name]] <- sapply(dataframe[[col_name]], paste, collapse = ";")
+    }
+  }
+  return(dataframe)
+}
+
+
+# Define the colors for each mutation type
+col <- c(
+  "Missense" = "blue",
+  "Nonsense" = "red",
+  "Synonymous" = "green",
+  "Essential_Splice" = "purple",
+  "Stop_loss" = "orange"
+)
+
+# Visualizing with oncoPrint from the ComplexHeatmap package
+library(ComplexHeatmap)
+alter_fun = list(
+  background = function(x, y, w, h) {
+    grid.rect(x, y, w-unit(2, "pt"), h-unit(2, "pt"), 
+              gp = gpar(fill = "#CCCCCC", col = NA))
+  },
+  Missense = function(x, y, w, h) {
+    grid.rect(x, y, w-unit(2, "pt"), h-unit(2, "pt"), 
+              gp = gpar(fill = "blue", col = NA))
+  },
+  # big blue
+  Nonsense = function(x, y, w, h) {
+    grid.rect(x, y, w-unit(2, "pt"), h-unit(2, "pt"), 
+              gp = gpar(fill = "red", col = NA))
+  },
+  # big blue
+  Synonymous = function(x, y, w, h) {
+    grid.rect(x, y, w-unit(2, "pt"),h-unit(2, "pt"), 
+              gp = gpar(fill = "green", col = NA))
+  },
+  # big red
+  Essential_Splice = function(x, y, w, h) {
+    grid.rect(x, y, w-unit(2, "pt"), h-unit(2, "pt"), 
+              gp = gpar(fill = "purple", col = NA))
+  },
+  # small green
+  Stop_loss = function(x, y, w, h) {
+    grid.rect(x, y, w-unit(2, "pt"), h-unit(2, "pt"), 
+              gp = gpar(fill = "orange", col = NA))
+  }
+)
+
+
+#genome instability pancancer wise
+primary_data_df <-primary_data[primary_data$gene %in% mutations$mutations, ]
+
+df_for_oncoplot <- primary_data_df[, c("sampleID", "gene", "impact")]
+df_for_oncoplot <- subset(df_for_oncoplot, impact != "no-SNV")
+df_wide <- df_for_oncoplot %>% 
+  pivot_wider(names_from = gene, values_from = impact)
+df_wide_subset_test <- df_wide
+
+# Apply the conversion function to the dataframe
+df_wide_subset_test <- convert_list_columns(df_wide_subset_test)
+df_wide_subset_test[is.na(df_wide_subset_test)] = ""
+df_wide_subset_test = df_wide_subset_test[, -1]
+df_wide_subset_test=  df_wide_subset_test[, -ncol(df_wide_subset_test)]
+
+#onlyselect top 50 genes
+mutation_frequency <- colSums(df_wide_subset_test != "")
+top_genes <- names(sort(mutation_frequency, decreasing = TRUE)[1:50])
+df_wide_subset_test <- df_wide_subset_test[, top_genes]
+df_wide_subset_test = t(as.matrix(df_wide_subset_test))
+
+
+# Define the title for the OncoPrint
+column_title = paste("OncoPrint for genome instability genes")
+# Define the heatmap_legend_param within the function
+heatmap_legend_param = list(title = "Mutations", 
+                            at = c("Missense" ,"Nonsense","Synonymous","Essential_Splice", "Stop_loss"), 
+                            labels = c("Missense" ,"Nonsense","Synonymous","Essential_Splice", "Stop_loss"))
+
+# Create the OncoPrint
+p <- oncoPrint(df_wide_subset_test,
+               alter_fun = alter_fun, col = col, 
+               column_title = column_title, heatmap_legend_param = heatmap_legend_param, use_raster=TRUE)
+p
+```
+
