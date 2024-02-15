@@ -1,0 +1,210 @@
+---
+title: "Supp_fig16_18"
+output: html_document
+date: "2024-02-15"
+---
+
+```{r setup, include=FALSE}
+#Ordering bewteen hallmarks
+load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/primary_data.RData")
+load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/list_names.RData")
+library(readxl)
+library(tidyverse)
+library(ggplot2)
+library(ggpubr)
+library(ggrepel)
+library(ggstatsplot)
+library(dplyr)
+
+Gene_list_of_cancer_hallmarks <- read_excel("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/Gene_list_of_cancer_hallmarks.xlsx")
+#convert genes to ensembl id
+library(biomaRt)
+hsapiens_genes <- getBM(attributes = c("ensembl_gene_id", 
+                                       "hgnc_symbol"),
+                        mart = useMart("ensembl", dataset = "hsapiens_gene_ensembl"))
+
+all_hallmarks <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$ALL) 
+all_hallmarks<-  unique(all_hallmarks$hgnc_symbol)
+all_hallmarks<-as.vector(all_hallmarks)
+
+angiogenesis <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$ANGIOGENESIS) 
+angiogenesis<-  unique(angiogenesis$hgnc_symbol)
+angiogenesis<-as.vector(angiogenesis)
+
+metabolism <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$METABOLISM) 
+metabolism<-  unique(metabolism$hgnc_symbol)
+metabolism<-as.vector(metabolism)
+
+
+death <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$DEATH) 
+death<-  unique(death$hgnc_symbol)
+death<-as.vector(death)
+
+proliferation <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$PROLIFERATION) 
+proliferation<-  unique(proliferation$hgnc_symbol)
+proliferation<-as.vector(proliferation)
+
+
+inflammation <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$INFLAMMATION) 
+inflammation<-  unique(inflammation$hgnc_symbol)
+inflammation<-as.vector(inflammation)
+
+metastasis <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$METASTASIS) 
+metastasis<-  unique(metastasis$hgnc_symbol)
+metastasis<-as.vector(metastasis)
+
+immortality <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$IMMORTALITY) 
+immortality<-  unique(immortality$hgnc_symbol)
+immortality<-as.vector(immortality)
+
+
+growth <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$GROWTH) 
+growth<-  unique(growth$hgnc_symbol)
+growth<-as.vector(growth)
+
+
+immune <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$IMMUNE) 
+immune<-  unique(immune$hgnc_symbol)
+immune<-as.vector(immune)
+
+mutations <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$MUTATIONS) 
+mutations<-  unique(mutations$hgnc_symbol)
+mutations<-as.vector(mutations)
+
+#load control category escape
+escape_genes = readxl::read_xlsx("/Users/luciegourmet/Dropbox/Projects/DriverLandscape/Data/SuppTable3_escapegenes_Aug2021.xlsx")
+colnames(escape_genes)<-"escape"
+#load control category cancer drivers
+load("/Users/luciegourmet/Dropbox/Projects/DriverLandscape/VAF_cancer_hallmarks/Relevant_analysis/Data/drivergenes.RData")
+
+library("plotrix")
+data_summary <- function(data, varname, groupnames){
+  require(plyr)
+  summary_func <- function(x, col){
+    c(mean = mean(x[[col]], na.rm=TRUE),
+      std.deviation = sd(x[[col]], na.rm=TRUE))
+  }
+  data_sum<-ddply(data, groupnames, .fun=summary_func,
+                  varname)
+  data_sum <- rename(data_sum, c("mean" = varname))
+  return(data_sum)
+}
+
+load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/Supplementary/all_patient_trajectories_cancer.RData")
+
+```
+
+
+```{r SF17 hallmarks rank }
+
+#plot the ordering of the actual data
+
+
+
+transposed_cancer_patients<-t(all_patient_trajectories_cancer)
+
+transposed_cancer_patients <- apply(transposed_cancer_patients, 2, function(x) rank(-x, ties.method = "min"))
+
+
+df_cancer_patients<-t(transposed_cancer_patients)
+df_cancer_patients<-as.data.frame(df_cancer_patients)
+
+
+library(tidyverse)
+
+new_df <- df_cancer_patients %>%
+  gather(key = "hallmark", value = "rank") %>%
+  group_by(hallmark, rank) %>%
+  summarise(frequency = n()) %>%
+  arrange(hallmark, rank)
+
+ggplot(new_df, aes(x = rank, y = frequency, fill = hallmark)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(x = "Rank", y = "Frequency", fill = "Halmmark") 
+
+```
+
+
+
+```{r SF18 pseudohallmarks rank }
+#pseudo hallmarks
+primary_data_filt<-primary_data%>% filter(!gene %in% all_hallmarks)
+neutral_VAF<-NULL
+for (i in 1:9484) {
+  #create 10 lists of neutral genes
+  print(i)
+  pseudo_angiogenesis<-sample(x = primary_data_filt$gene,size = 482)
+  pseudo_metastasis<-sample(x = primary_data_filt$gene,size = 1087)
+  pseudo_metabolism<-sample(x = primary_data_filt$gene,size = 436)
+  pseudo_death<-sample(x = primary_data_filt$gene,size = 1138)
+  pseudo_proliferation<-sample(x = primary_data_filt$gene,size = 1242)
+  pseudo_inflammation<-sample(x = primary_data_filt$gene,size = 609)
+  pseudo_immortality<-sample(x = primary_data_filt$gene,size = 298)
+  pseudo_growth<-sample(x = primary_data_filt$gene,size = 530)
+  pseudo_immune<-sample(x = primary_data_filt$gene,size = 578)
+  pseudo_mutations<-sample(x = primary_data_filt$gene,size = 217)
+  
+  primary_plot<-primary_data%>%dplyr::filter(impact %in% c("Missense", "Nonsense","Essential_Splice","Stop_loss"))%>%dplyr::filter(gene %in% list_names$list_names)
+  #create 
+  df_pseudo_angiogenesis<-primary_plot%>% dplyr::filter(gene %in% pseudo_angiogenesis)%>% dplyr::select(sampleID, gene, VAF, cancertype)
+  df_pseudo_angiogenesis$category<-"pseudo_angiogenesis"
+  
+  df_pseudo_metastasis<-primary_plot%>% dplyr::filter(gene %in% pseudo_metastasis)%>% dplyr::select(sampleID, gene, VAF, cancertype)
+  df_pseudo_metastasis$category<-"pseudo_metastasis"
+  
+  df_pseudo_metabolism<-primary_plot%>% dplyr::filter(gene %in% pseudo_metabolism)%>% dplyr::select(sampleID, gene, VAF, cancertype)
+  df_pseudo_metabolism$category<-"pseudo_metabolism"
+  
+  df_pseudo_death<-primary_plot%>% dplyr::filter(gene %in% pseudo_death)%>% dplyr::select(sampleID, gene, VAF, cancertype)
+  df_pseudo_death$category<-"pseudo_death"
+  
+  df_pseudo_proliferation<-primary_plot%>% dplyr::filter(gene %in% pseudo_proliferation)%>% dplyr::select(sampleID, gene, VAF, cancertype)
+  df_pseudo_proliferation$category<-"pseudo_proliferation"
+  
+  df_pseudo_inflammation<-primary_plot%>% dplyr::filter(gene %in% pseudo_inflammation)%>% dplyr::select(sampleID, gene, VAF, cancertype)
+  df_pseudo_inflammation$category<-"pseudo_inflammation"
+  
+  df_pseudo_immortality<-primary_plot%>% dplyr::filter(gene %in% pseudo_immortality)%>% dplyr::select(sampleID, gene, VAF, cancertype)
+  df_pseudo_immortality$category<-"pseudo_immortality"
+  
+  df_pseudo_growth<-primary_plot%>% dplyr::filter(gene %in% pseudo_growth)%>% dplyr::select(sampleID, gene, VAF, cancertype)
+  df_pseudo_growth$category<-"pseudo_growth"
+  
+  df_pseudo_immune<-primary_plot%>% dplyr::filter(gene %in% pseudo_immune)%>% dplyr::select(sampleID, gene, VAF, cancertype)
+  df_pseudo_immune$category<-"pseudo_immune"
+  
+  df_pseudo_mutations<-primary_plot%>% dplyr::filter(gene %in%pseudo_mutations)%>% dplyr::select(sampleID, gene, VAF, cancertype)
+  df_pseudo_mutations$category<-"pseudo_mutations"
+  
+  df_density<-rbind(df_pseudo_angiogenesis, df_pseudo_metastasis, df_pseudo_metabolism, df_pseudo_death, df_pseudo_proliferation, df_pseudo_inflammation, df_pseudo_immortality, df_pseudo_growth, df_pseudo_immune, df_pseudo_mutations)
+  
+  df_VAF_cancer<- data_summary(df_density, varname="VAF", 
+                               groupnames= "category")
+  
+  neutral_VAF <- rbind(neutral_VAF, df_VAF_cancer)
+}
+pseudo_hallmarks_patients<-neutral_VAF
+save(pseudo_hallmarks_patients, file="pseudo_hallmarks_patients.RData")
+neutral_VAF$Rank <- NA
+
+# Calculate ranks within every 10 rows
+for (i in 1:(nrow(neutral_VAF) %/% 10)) {
+  start <- (i - 1) * 10 + 1
+  end <- i * 10
+  neutral_VAF$Rank[start:end] <- rank(-neutral_VAF$VAF[start:end])
+}
+
+
+rank_counts <- table(neutral_VAF$Rank, neutral_VAF$category)
+
+# Convert the table to a data frame
+rank_counts <- as.data.frame(rank_counts)
+colnames(rank_counts)<-c("Rank", "category", "Frequency")
+
+# Plotting the frequency of ranks for each hallmark
+ggplot(rank_counts, aes(x = Rank, y = Frequency, fill = category)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(x = "Rank", y = "Frequency", fill = "category") 
+
+```
+
