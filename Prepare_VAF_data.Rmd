@@ -1,0 +1,201 @@
+---
+title: "Prepare_VAF_data"
+author: "Lucie_Gourmet"
+date: "29/03/2023"
+output: html_document
+---
+
+```{r setup}
+library(tidyverse)
+library(ggplot2)
+library(ggpubr)
+library(ggrepel)
+library(ggstatsplot)
+TCGA_hg19 <- read_csv("/Users/luciegourmet/Dropbox/Projects/DriverLandscape/VAF_cancer_hallmarks/Relevant_analysis/Data/TCGA-hg19.csv")
+load("/Users/luciegourmet/Dropbox/Projects/DriverLandscape/VAF_cancer_hallmarks/Relevant_analysis/Data/RefCDS_human_GRCh37_dNdScv.0.1.0.rda")
+refdb_run =RefCDS
+#normal data from the paper The somatic mutation landscape of the human body of Garcia-Neto
+normal_data <- read_tsv('/Users/luciegourmet/Dropbox/Projects/DriverLandscape/VAF_cancer_hallmarks/Relevant_analysis/Data/13059_2019_1919_MOESM5_ESM.tsv')
+```
+
+
+```{r prepare hallmarks mutations}
+library(readxl)
+
+Gene_list_of_cancer_hallmarks <- read_excel("/Users/luciegourmet/Dropbox/Projects/DriverLandscape/VAF_cancer_hallmarks/Relevant_analysis/Data/Gene_list_of_cancer_hallmarks.xlsx")
+#convert genes to ensembl id
+library(biomaRt)
+hsapiens_genes <- getBM(attributes = c("ensembl_gene_id", 
+                                       "hgnc_symbol"),
+                        mart = useMart("ensembl", dataset = "hsapiens_gene_ensembl"))
+
+all_hallmarks <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$ALL) 
+all_hallmarks<-  unique(all_hallmarks$hgnc_symbol)
+all_hallmarks<-as.data.frame(all_hallmarks)
+
+angiogenesis <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$ANGIOGENESIS) 
+angiogenesis<-  unique(angiogenesis$hgnc_symbol)
+angiogenesis<-as.data.frame(angiogenesis)
+
+metabolism <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$METABOLISM) 
+metabolism<-  unique(metabolism$hgnc_symbol)
+metabolism<-as.data.frame(metabolism)
+
+
+death <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$DEATH) 
+death<-  unique(death$hgnc_symbol)
+death<-as.data.frame(death)
+
+proliferation <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$PROLIFERATION) 
+proliferation<-  unique(proliferation$hgnc_symbol)
+proliferation<-as.data.frame(proliferation)
+
+
+inflammation <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$INFLAMMATION) 
+inflammation<-  unique(inflammation$hgnc_symbol)
+inflammation<-as.data.frame(inflammation)
+
+metastasis <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$METASTASIS) 
+metastasis<-  unique(metastasis$hgnc_symbol)
+metastasis<-as.data.frame(metastasis)
+
+immortality <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$IMMORTALITY) 
+immortality<-  unique(immortality$hgnc_symbol)
+immortality<-as.data.frame(immortality)
+
+
+growth <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$GROWTH) 
+growth<-  unique(growth$hgnc_symbol)
+growth<-as.data.frame(growth)
+
+
+immune <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$IMMUNE) 
+immune<-  unique(immune$hgnc_symbol)
+immune<-as.data.frame(immune)
+
+mutations <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_of_cancer_hallmarks$MUTATIONS) 
+mutations<-  unique(mutations$hgnc_symbol)
+mutations<-as.data.frame(mutations)
+
+#load control category escape
+escape_genes = readxl::read_xlsx("/Users/luciegourmet/Dropbox/Projects/DriverLandscape/Data/SuppTable3_escapegenes_Aug2021.xlsx")
+colnames(escape_genes)<-"escape"
+#load control category cancer drivers
+load("/Users/luciegourmet/Dropbox/Projects/DriverLandscape/VAF_cancer_hallmarks/Relevant_analysis/Data/drivergenes.RData")
+```
+
+```{r run dnds to annotate cancer data}
+df_1_dndscvinput <- TCGA_hg19 %>% dplyr::select(sampleid,chr,start,Reference_Allele,Tumor_Seq_Allele2) 
+df_1_dndscvinput_fix<-df_1_dndscvinput %>% mutate(across('chr', str_replace, 'chr', ''))
+
+dndsoutTCGAPancancer=dndscv(df_1_dndscvinput_fix,cv=NULL,max_muts_per_gene_per_sample = Inf,max_coding_muts_per_sample = Inf,constrain_wnon_wspl = T,outp = 2)
+
+annot_table<-dndsoutTCGAPancancer$annotmuts
+
+
+annot_table2<-annot_table %>% mutate(sampleID=substr(sampleID,0,12)) %>% mutate(newID=paste(sampleID,chr,pos,ref,sep ="_"))
+
+
+df_1_fix<-TCGA_hg19 %>% mutate(across('chr', str_replace, 'chr', '')) %>% mutate(sampleID=substr(sampleid,0,12)) %>% mutate(newID=paste(sampleID,chr,start,Reference_Allele,sep ="_"))
+
+annotated_TCGA_hg19<-left_join(annot_table2,df_1_fix)
+
+save(annotated_TCGA_hg19, file="annotated_TCGA_hg19.RData")
+
+```
+
+
+```{r annotateplot}
+load("/Users/luciegourmet/annotated_TCGA_hg19.RData")
+#remove duplicates
+annotated_TCGA_hg19<- annotated_TCGA_hg19[!duplicated(annotated_TCGA_hg19), ]
+#add sample type
+
+annotated_TCGA_hg19$CodeType <- sapply(annotated_TCGA_hg19$Tumor_Sample_Barcode,
+                                       function(x) substr(strsplit(x,"-")[[1]][4],1,2))
+annotated_TCGA_hg19$SampleType <- sapply(annotated_TCGA_hg19$CodeType,
+                                         function(x) ifelse(x=="01","PrimaryTumour",
+                                                            ifelse(x %in% c("10","11"),"Normal",
+                                                                   ifelse(x=="06","Metastasis","Other"))))
+
+#annotated_TCGA_hg19$chr = paste0('chr', annotated_TCGA_hg19$chr)
+#met_data<- annotated_TCGA_hg19%>% dplyr::filter(SampleType == "Metastasis")
+
+#only take primary tumours
+primary_data<- annotated_TCGA_hg19%>% dplyr::filter(SampleType == "PrimaryTumour")
+
+#create hallmark categories
+primary_data<-primary_data %>% mutate(mutations=ifelse(gene %in% mutations$mutations,"YES","NO"))
+primary_data<-primary_data %>% mutate(immune=ifelse(gene %in% immune$immune,"YES","NO"))
+primary_data<-primary_data %>% mutate(growth=ifelse(gene %in% growth$growth,"YES","NO"))
+primary_data<-primary_data %>% mutate(immortality=ifelse(gene %in% immortality$immortality,"YES","NO"))
+primary_data<-primary_data %>% mutate(metastasis=ifelse(gene %in% metastasis$metastasis,"YES","NO"))
+primary_data<-primary_data %>% mutate(inflammation=ifelse(gene %in% inflammation$inflammation,"YES","NO"))
+primary_data<-primary_data %>% mutate(proliferation=ifelse(gene %in% proliferation$proliferation,"YES","NO"))
+primary_data<-primary_data %>% mutate(death=ifelse(gene %in% death$death,"YES","NO"))
+primary_data<-primary_data %>% mutate(metabolism=ifelse(gene %in% metabolism$metabolism,"YES","NO"))
+primary_data<-primary_data %>% mutate(angiogenesis=ifelse(gene %in% angiogenesis$angiogenesis,"YES","NO"))
+primary_data<-primary_data %>% mutate(driver=ifelse(gene %in% drivergenes$drivergenes,"YES","NO"))
+primary_data<-primary_data %>% mutate(escape=ifelse(gene %in% escape_genes$escape,"YES","NO"))
+
+save(primary_data, file="primary_data.RData")
+
+```
+
+```{r run dnds to annotate normal data}
+df_1_dndscvinput <- normal_data %>% dplyr::select(sample_id,chr,pos,ref,alt) 
+df_1_dndscvinput_fix<-df_1_dndscvinput %>% mutate(across('chr', str_replace, 'chr', ''))
+
+dndsoutTCGAPancancer=dndscv(df_1_dndscvinput_fix,cv=NULL,max_muts_per_gene_per_sample = Inf,max_coding_muts_per_sample = Inf,constrain_wnon_wspl = T,outp = 2)
+
+annot_table<-dndsoutTCGAPancancer$annotmuts
+
+
+annot_table2<-annot_table %>% mutate(sampleID=sampleID) %>% mutate(newID=paste(sampleID,chr,pos,ref,sep ="_"))
+
+
+df_1_fix<-normal_data %>% mutate(across('chr', str_replace, 'chr', '')) %>% mutate(sampleID=sample_id) %>% mutate(newID=paste(sample_id,chr,pos,ref,alt,sep ="_"))
+
+df_1_fix$VAF<-df_1_fix$`alt_count`/df_1_fix$coverage
+annotated_normal_data<-annot_table2 %>% mutate(VAF=ifelse(sampleID %in% df_1_fix$sampleID & pos %in% df_1_fix$pos,df_1_fix$VAF,"NA"))
+annotated_normal_data<-annotated_normal_data %>% dplyr::select(-ref_cod:codonsub)
+t<-annotated_normal_data %>% dplyr::select(-ref_cod:codonsub)
+t<-t %>% mutate(tissue=ifelse(sampleID %in% df_1_fix$sampleID & pos %in% df_1_fix$pos,df_1_fix$tissue,"NA"))
+t<-cbind(annotated_normal_data, t$tissue)
+annotated_normal_data<-t
+colnames(annotated_normal_data)[colnames(annotated_normal_data) == 't$tissue'] <- 'tissue'  
+annotated_normal_data<-annotated_normal_data %>% mutate(mutations=ifelse(gene %in% mutations$mutations,"YES","NO"))
+annotated_normal_data<-annotated_normal_data %>% mutate(immune=ifelse(gene %in% immune$immune,"YES","NO"))
+annotated_normal_data<-annotated_normal_data %>% mutate(growth=ifelse(gene %in% growth$growth,"YES","NO"))
+annotated_normal_data<-annotated_normal_data %>% mutate(immortality=ifelse(gene %in% immortality$immortality,"YES","NO"))
+annotated_normal_data<-annotated_normal_data %>% mutate(metastasis=ifelse(gene %in% metastasis$metastasis,"YES","NO"))
+annotated_normal_data<-annotated_normal_data %>% mutate(inflammation=ifelse(gene %in% inflammation$inflammation,"YES","NO"))
+annotated_normal_data<-annotated_normal_data %>% mutate(proliferation=ifelse(gene %in% proliferation$proliferation,"YES","NO"))
+annotated_normal_data<-annotated_normal_data %>% mutate(death=ifelse(gene %in% death$death,"YES","NO"))
+annotated_normal_data<-annotated_normal_data %>% mutate(metabolism=ifelse(gene %in% metabolism$metabolism,"YES","NO"))
+annotated_normal_data<-annotated_normal_data %>% mutate(angiogenesis=ifelse(gene %in% angiogenesis$angiogenesis,"YES","NO"))
+annotated_normal_data<-annotated_normal_data %>% mutate(driver=ifelse(gene %in% drivergenes$drivergenes,"YES","NO"))
+annotated_normal_data<-annotated_normal_data %>% mutate(escape=ifelse(gene %in% escape_genes$escape,"YES","NO"))
+
+annotated_normal_data<- annotated_normal_data[!duplicated( annotated_normal_data), ]
+
+save(annotated_normal_data, file="annotated_normal_data.RData")
+```
+
+```{r prepare relevant genes}
+load("/Users/luciegourmet/annotated_TCGA_hg19.RData")
+data_list<-unlist(refdb_run)
+list_names<-NULL
+i <- 0
+for(x in 1:50095){
+  i <- i+1
+  print(i)
+  name<-refdb_run[[i]]$gene_name
+ list_names<-c(list_names, name)
+}
+
+list_names<-as.data.frame(list_names)
+save(list_names, file="list_names.RData")
+
+```
+
