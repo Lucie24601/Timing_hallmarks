@@ -27,18 +27,18 @@ library(openxlsx)
 
 
 ```{r load and prepare data}
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/drivergenes.RData")
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/list_names.RData")
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/primary_data.RData")
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/annotated_normal_data.RData")
+load("drivergenes.RData")
+load("list_names.RData")
+load("primary_data.RData")
+load("annotated_normal_data.RData")
 
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/RefCDS_human_GRCh37_dNdScv.0.1.0.rda")
+load("RefCDS_human_GRCh37_dNdScv.0.1.0.rda")
 refdb_run =RefCDS
 
 #stratify hallmark mutations
 library(readxl)
 
-Gene_list_of_cancer_hallmarks <- read_excel("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/Gene_list_of_cancer_hallmarks.xlsx")
+Gene_list_of_cancer_hallmarks <- read_excel("Gene_list_of_cancer_hallmarks.xlsx")
 
 #convert genes to ensembl id
 library(biomaRt)
@@ -121,94 +121,57 @@ angiogenesis<-angiogenesis%>%filter(angiogenesis %in% list_names$list_names)
 
 ```{r SF6 volcano plots}
 #```{r load_functions}
-#primary_data<-read_tsv("/Users/luciegourmet/Dropbox/Projects/DriverLandscape/TCGA_hg19_pancancer_annotated.tsv")
-setwd("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Fig1b_dNdS_pancancer")
+#primary_data<-read_tsv("TCGA_hg19_pancancer_annotated.tsv")
 #primary_data$chr<-interaction( "chr", primary_data$chr, sep = "")
 #create df
 
 #run dnds on each gene list of hallmarks
 df_relevant_angiogenesis_dndscv<-dndscv(primary_data, refdb = refdb_run ,cv=NULL, gene_list =angiogenesis$angiogenesis)
-
 save(df_relevant_angiogenesis_dndscv, file="df_relevant_angiogenesis_dndscv.RData")
 
-
-
 df_relevant_metabolism_dndscv<-dndscv(primary_data, refdb = refdb_run ,cv=NULL, gene_list =metabolism$metabolism)
-
 save(df_relevant_metabolism_dndscv, file="df_relevant_metabolism_dndscv.RData")
 
-
-
 df_relevant_death_dndscv<-dndscv(primary_data, refdb = refdb_run ,cv=NULL, gene_list =death$death)
-
 save(df_relevant_death_dndscv, file="df_relevant_death_dndscv.RData")
 
-
-
 df_relevant_proliferation_dndscv<-dndscv(primary_data, refdb = refdb_run ,cv=NULL, gene_list =proliferation$proliferation)
-
 save(df_relevant_proliferation_dndscv, file="df_relevant_proliferation_dndscv.RData")
 
-
-
 df_relevant_inflammation_dndscv<-dndscv(primary_data, refdb = refdb_run ,cv=NULL, gene_list =inflammation$inflammation)
-
 save(df_relevant_inflammation_dndscv, file="df_relevant_inflammation_dndscv.RData")
 
 
-
 df_relevant_metastasis_dndscv<-dndscv(primary_data, refdb = refdb_run ,cv=NULL,gene_list =metastasis$metastasis)
-
 save(df_relevant_metastasis_dndscv, file="df_relevant_metastasis_dndscv.RData")
 
 
-
-
 df_relevant_immortality_dndscv<-dndscv(primary_data, refdb = refdb_run ,cv=NULL, gene_list =immortality$immortality)
-
 save(df_relevant_immortality_dndscv, file="df_relevant_immortality_dndscv.RData")
 
 
-
-
 df_relevant_growth_dndscv<-dndscv(primary_data, refdb = refdb_run ,cv=NULL, gene_list =growth$growth)
-
 save(df_relevant_growth_dndscv, file="df_relevant_growth_dndscv.RData")
 
 
-
 df_relevant_immune_dndscv<-dndscv(primary_data, refdb = refdb_run ,cv=NULL, gene_list =immune$immune)
-
 save(df_relevant_immune_dndscv, file="df_relevant_immune_dndscv.RData")
 
 
-
 df_relevant_mutations_dndscv<-dndscv(primary_data, refdb = refdb_run ,cv=NULL, gene_list =mutations$mutations)
-
 save(df_relevant_mutations_dndscv, file="df_relevant_mutations_dndscv.RData")
 
 
-
-
 df_relevant_driver_dndscv<-dndscv(primary_data, refdb = refdb_run ,cv=NULL, gene_list =driver$drivergenes)
-
 save(df_relevant_driver_dndscv, file="df_relevant_driver_dndscv.RData")
 
-
-
-
 df_relevant_escape_dndscv<-dndscv(primary_data, refdb = refdb_run ,cv=NULL, gene_list =escape$escape)
-
 save(df_relevant_escape_dndscv, file="df_relevant_escape_dndscv.RData")
-
 
 #plot volcano plots
 run_volcano_single<-function(x,FDR=0.05, filt){
   df_1<-x$sel_cv
-  
   df_1<- df_1 %>% dplyr::filter(gene_name %in% filt)
-  
-  
   df_1<-df_1 %>% mutate(log2FolddNdS=log2(wmis_cv), Significant=ifelse(qmis_cv < FDR, paste("FDR <",FDR), "Not Sig"))
   
   p1 <- ggplot(df_1, aes(x = log2FolddNdS, y = -log10(pmis_cv))) +
@@ -262,7 +225,6 @@ ggsave("Volcano_escape.pdf",plot = p_escape, units = "cm",height = 20, width = 1
 p_growth<-run_volcano_single(x=df_relevant_growth_dndscv, filt = growth$growth)
 ggsave("Volcano_growth.pdf",plot = p_growth, units = "cm",height = 20, width = 15)
 
-
 p_immune<-run_volcano_single(x=df_relevant_immune_dndscv, filt = immune$immune)
 ggsave("Volcano_immune.pdf",plot = p_immune, units = "cm",height = 20, width = 15)
 
@@ -275,10 +237,8 @@ ggsave("Volcano_immortality.pdf",plot = p_immortality, units = "cm",height = 20,
 p_metabolism<-run_volcano_single(x=df_relevant_metabolism_dndscv, filt = metabolism$metabolism)
 ggsave("Volcano_metabolism.pdf",plot = p_metabolism, units = "cm",height = 20, width = 15)
 
-
 p_metastasis<-run_volcano_single(x=df_relevant_metastasis_dndscv, filt = metastasis$metastasis)
 ggsave("Volcano_metastasis.pdf",plot = p_metastasis, units = "cm",height = 20, width = 15)
-
 
 p_mutations<-run_volcano_single(x=df_relevant_mutations_dndscv, filt = mutations$mutations)
 ggsave("Volcano_mutations.pdf",plot = p_mutations, units = "cm",height = 20, width = 15)
@@ -290,12 +250,10 @@ ggsave("Volcano_proliferation.pdf",plot = p_proliferation, units = "cm",height =
 
 
 ```{r SF7 pancancer CCF ordering}
-
 primary_plot<-primary_data%>%dplyr::filter(impact %in% c("Missense", "Nonsense","Essential_Splice","Stop_loss"))%>%dplyr::filter(gene %in% list_names$list_names)
 df_angiogenesis<-primary_plot%>% dplyr::filter(angiogenesis=="YES")%>% dplyr::select(sampleID, gene, ccf, cancertype, angiogenesis)
 df_angiogenesis$angiogenesis<-"angiogenesis"
 colnames(df_angiogenesis)[colnames(df_angiogenesis) == 'angiogenesis'] <- 'category'
-
 
 df_driver<-primary_plot%>% filter(driver=="YES")%>% dplyr::select(sampleID, gene, ccf, cancertype, driver)
 df_driver$driver<-"driver"
@@ -369,23 +327,13 @@ p1<-ggplot(df_ccf, aes(x= reorder(category, -ccf), y = ccf), color=category)+
   geom_errorbar(aes(ymin=ccf-std.error, ymax=ccf+std.error, color=category), width=0, position=position_dodge(0.78))+ rotate_x_text(45) +   
   geom_point(position = position_dodge(0.78), size = 1.5) +  cowplot::theme_cowplot()+theme(legend.position="none")+scale_y_log10()+xlab("Cancer hallmarks (ordered by ccf)") +ylab("ccf") + scale_color_manual(breaks = c("genome instability", "immortality", "metabolism", "angiogenesis","growth", "death","proliferation", "metastasis", "immune evasion", "inflammation"), values =c( "purple", "turquoise", "magenta", "red", "brown","blue", "pink", "yellow", "orange", "green") )+
   theme(axis.text.x = element_text(angle=90, vjust=.5, hjust=1))
-
-#+coord_flip()+ scale_x_discrete(limits = c("immune evasion","inflammation","proliferation", "metastasis","death","growth","angiogenesis", "genome instability", "metabolism", "immortality"))
-
-
 ggsave("ccf_pancancer.pdf",plot = p1, units = "cm",height = 12, width = 16)
-
-
 ```
 
 
 
 ```{r SF8 VAF Without TP53}
-
-
 primary_data%>% filter(!gene=="TP53")
-
-
 primary_plot<-primary_data%>%dplyr::filter(impact %in% c("Missense", "Nonsense","Essential_Splice","Stop_loss"))%>%dplyr::filter(gene %in% list_names$list_names)
 TP53<-c("TP53")
 primary_plot<-primary_plot%>%filter(!gene %in% TP53)
@@ -393,7 +341,6 @@ primary_plot<-primary_plot%>%filter(!gene %in% TP53)
 df_angiogenesis<-primary_plot%>% dplyr::filter(angiogenesis=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, angiogenesis)
 df_angiogenesis$angiogenesis<-"angiogenesis"
 colnames(df_angiogenesis)[colnames(df_angiogenesis) == 'angiogenesis'] <- 'category'
-
 
 df_driver<-primary_plot%>% filter(driver=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, driver)
 df_driver$driver<-"driver"
@@ -444,7 +391,6 @@ colnames(df_immune)[colnames(df_immune) == 'immune'] <- 'category'
 df_density<-rbind(df_angiogenesis, df_metabolism, df_death, df_proliferation, df_inflammation, df_metastasis, df_immortality, df_growth, df_immune, df_mutations, df_driver, df_escape)
 
 
-
 #function to calculate mean and sd
 library("plotrix")
 data_summary <- function(data, varname, groupnames){
@@ -468,14 +414,12 @@ p1<-ggplot(df_VAF, aes(x= reorder(category, -VAF), y = VAF), color=category)+
   geom_errorbar(aes(ymin=VAF-std.error, ymax=VAF+std.error, color=category), width=0, position=position_dodge(0.78))+ rotate_x_text(45) +   
   geom_point(position = position_dodge(0.78), size = 1.5) +  cowplot::theme_cowplot()+theme(legend.position="none")+scale_y_log10()+xlab(NULL) +ylab("VAF")+ scale_color_manual(breaks = c("genome instability", "immortality", "metabolism", "angiogenesis","growth", "death","proliferation", "metastasis", "immune evasion", "inflammation"), values =c( "purple", "turquoise", "magenta", "red", "brown","blue", "pink", "yellow", "orange", "green") )+
   theme(axis.text.x = element_text(angle=90, vjust=.5, hjust=1))+ggtitle("Cancer")
-
-p1
 ```
 
 
 
 ```{r SF9 VAF significant correlation cancer types heatmap}
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/primary_data.RData")
+load("primary_data.RData")
 #function to extract VAF of every cancer hallmark
 library("plotrix")
 data_summary <- function(data, varname, groupnames){
@@ -551,9 +495,7 @@ df_VAF<-as.data.frame(df_VAF[,2 ])
 return(df_VAF)
 }
 
-
 #r extract mean VAF and plot heatmap
-
 vaf_ACC<-extract_VAF(cancer="ACC")
 vaf_BRCA<-extract_VAF(cancer="BRCA")
 vaf_BLCA<-extract_VAF(cancer="BLCA")
@@ -587,7 +529,6 @@ vaf_UCEC<-extract_VAF(cancer="UCEC")
 vaf_UCS<-extract_VAF(cancer="UCS")
 vaf_UVM<-extract_VAF(cancer="UVM")
 vaf_CESC<-extract_VAF(cancer="CESC")
-
 vaf_CHOL<-extract_VAF(cancer="CHOL")
 
 #rename column with cancer type
@@ -634,9 +575,7 @@ cancer_mean_VAF<-as.data.frame(t(cancer_types_vaf))
 cancer_mean_VAF <- cancer_mean_VAF[, sort(names(cancer_mean_VAF))]
 
 cancer_mean_VAF$cancer_type<-rownames(cancer_mean_VAF)
-
-
-write.xlsx(cancer_mean_VAF, "/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/cancer_mean_VAF.xlsx")
+write.xlsx(cancer_mean_VAF, "cancer_mean_VAF.xlsx")
 
 
 cor_matrix <- cor(cancer_types_vaf, method = "spearman")
@@ -678,7 +617,6 @@ filtered_cor_matrix[!mask] <- NA  # Set non-significant correlations to NA
 breaks <- seq(-1, 1, length.out = 100)
 p <- pheatmap(filtered_cor_matrix, cluster_rows = FALSE, cluster_cols = FALSE, upper = FALSE, breaks = breaks)
 ggsave("Significant_correlation_cancer_types_VAF_BH_correction.pdf",plot = p, units = "cm",height = 16, width = 20)
-
 ```
 
 
@@ -697,7 +635,6 @@ data_summary <- function(data, varname, groupnames){
   data_sum <- rename(data_sum, c("mean" = varname))
  return(data_sum)
 }
-
 primary_data <- primary_data[primary_data$ccf <= 1, ]
 
 
@@ -835,11 +772,9 @@ colnames(ccf_UCEC)<-"UCEC"
 colnames(ccf_UCS)<-"UCS"
 colnames(ccf_UVM)<-"UVM"
 colnames(ccf_CESC)<-"CESC"
-
 colnames(ccf_CHOL)<-"CHOL"
 
 cancer_types_ccf<-cbind(ccf_ACC, ccf_BRCA, ccf_BLCA, ccf_DLBC, ccf_COAD, ccf_ESCA, ccf_GBM, ccf_HNSC,  ccf_KIRC, ccf_KICH, ccf_LIHC, ccf_LGG, ccf_LUAD, ccf_LUSC, ccf_OV, ccf_PAAD, ccf_PRAD,  ccf_READ, ccf_STAD, ccf_SARC, ccf_SKCM, ccf_THCA, ccf_UCEC, ccf_UCS, ccf_CESC)
-
 
 cor_matrix <- cor(cancer_types_ccf, method = "spearman")
 library(pheatmap)
@@ -847,7 +782,6 @@ pheatmap(cor_matrix, cluster_rows = TRUE, cluster_cols = TRUE, upper = FALSE)
 p<-pheatmap(cor_matrix, scale = "none", cluster_rows = TRUE, cluster_cols = TRUE, 
          upper = TRUE, legend_title = "Spearman correlation")
 #legend_breaks = c(-1, -0.5, 0, 0.5, 1), legend_labels = c("-1", "-0.5", "0", "0.5", "1")
-
 ggsave("Correlation_cancer_types_ccf.pdf",plot = p, units = "cm",height = 16, width = 20)
 ```
 
