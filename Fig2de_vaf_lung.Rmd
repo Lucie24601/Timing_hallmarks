@@ -3,8 +3,6 @@ title: "Fig2de_lung_VAF"
 output: html_document
 date: "2024-02-13"
 ---
-
-
 ```{r setup, include=FALSE}
 library(tidyverse)
 library(ggplot2)
@@ -13,30 +11,21 @@ library(ggrepel)
 library(ggstatsplot)
 library(ggeasy)
 library(dplyr)
-
 ```
-
-
-
 ```{r load and prepare data}
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/drivergenes.RData")
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/list_names.RData")
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/primary_data.RData")
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/annotated_normal_data.RData")
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Fig1a_VAF_confidence_interval/LUAD_id_non_smoke.RData")
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Fig1a_VAF_confidence_interval/LUAD_id_smoke.RData")
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Fig1a_VAF_confidence_interval/LUAD_id_reformed.RData")
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Fig1a_VAF_confidence_interval/LUSC_id_non_smoke.RData")
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Fig1a_VAF_confidence_interval/LUSC_id_smoke.RData")
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Fig1a_VAF_confidence_interval/LUSC_id_reformed.RData")
-
+load("drivergenes.RData")
+load("list_names.RData")
+load("primary_data.RData")
+load("annotated_normal_data.RData")
+load("LUAD_id_non_smoke.RData")
+load("LUAD_id_smoke.RData")
+load("LUAD_id_reformed.RData")
+load("LUSC_id_non_smoke.RData")
+load("LUSC_id_smoke.RData")
+load("LUSC_id_reformed.RData")
 ```
 
-
-
-```{r VAF for pancancer}
-setwd("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Fig1a_VAF_confidence_interval")
-
+```{r prepare data}
 primary_plot<-primary_data%>%dplyr::filter(impact %in% c("Missense", "Nonsense","Essential_Splice","Stop_loss"))%>%dplyr::filter(gene %in% list_names$list_names)
 
 LUAD_smoker<-primary_plot %>% filter(sampleID %in% LUAD_id_smoke$bcr_patient_barcode)
@@ -53,10 +42,9 @@ LUSC_non_smoker<-primary_plot %>% filter(sampleID %in% LUSC_id_non_smoke$bcr_pat
 length_LUSC_non_smoker<-unique(LUSC_non_smoker$sampleID)
 LUSC_reformed<-primary_plot %>% filter(sampleID %in% LUSC_id_reformed$bcr_patient_barcode)
 length_LUSC_reformed<-unique(LUSC_reformed$sampleID)
-
 ```
 
-```{r VAF for pancancer}
+```{r correlation vaf lung heatmap}
 std.error <- function(x) sd(x)/sqrt(length(x))
 
 data_summary <- function(data, varname, groupnames){
@@ -131,25 +119,20 @@ extract_VAF_data <- function(data=LUSC){
   df_VAF<-as.data.frame(df_VAF[,2 ])
   return(df_VAF)
 }
-
-
-
-
+#extract vaf LUAD
 vaf_LUAD_non_smoker<-extract_VAF_data(data=LUAD_non_smoker)
 colnames(vaf_LUAD_non_smoker)<-"LUAD non smoker (n=61)"
 
 vaf_LUAD_smoker<-extract_VAF_data(data=LUAD_smoker)
 colnames(vaf_LUAD_smoker)<-"LUAD current smoker (n=108)"
 
-
 vaf_LUAD_reformed_smoker<-extract_VAF_data(data = LUAD_reformed)
 colnames(vaf_LUAD_reformed_smoker)<-"LUAD reformed smoker (n=279)"
 
 
-
+#extract vaf LUSC
 vaf_LUSC_reformed_smoker<-extract_VAF_data(data = LUSC_reformed)
 colnames(vaf_LUSC_reformed_smoker)<-"LUSC reformed smoker (n=299)"
-
 
 vaf_LUSC_non_smoker<-extract_VAF_data(data=LUSC_non_smoker)
 colnames(vaf_LUSC_non_smoker)<-"LUSC non smoker (n=16)"
@@ -163,10 +146,6 @@ colnames(vaf_pancancer)<-"Pancancer (n=9484)"
 lung_types_vaf<-cbind(vaf_LUAD_reformed_smoker, vaf_LUAD_non_smoker, vaf_LUAD_smoker, vaf_LUSC_smoker, vaf_LUSC_non_smoker, vaf_LUSC_reformed_smoker, vaf_pancancer)
 
 
-
-
-
-
 cor_matrix <- cor(lung_types_vaf, method = "spearman")
 library(pheatmap)
 breaks <- seq(-1, 1, length.out = 100)
@@ -174,12 +153,11 @@ pheatmap(cor_matrix, cluster_rows = TRUE, cluster_cols = TRUE, upper = FALSE, br
 p<-pheatmap(cor_matrix, scale = "none", cluster_rows = TRUE, cluster_cols = TRUE, 
          upper = FALSE, breaks=breaks)
 ggsave("Correlation_lung_VAF.pdf",plot = p, units = "cm",height = 16, width = 20)
-
 ```
 
 
 
-```{r VAF for pancancer}
+```{r VAF lung hallmarks ordering}
 extract_VAF_data <- function(data=LUSC){
   data<-data%>%dplyr::filter(impact %in% c("Missense", "Nonsense","Essential_Splice","Stop_loss"))%>%dplyr::filter(gene %in% list_names$list_names)
   df_angiogenesis<-data%>% dplyr::filter(angiogenesis=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, angiogenesis)
