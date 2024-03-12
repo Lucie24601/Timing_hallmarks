@@ -11,18 +11,16 @@ library(ggpubr)
 library(ggrepel)
 library(ggstatsplot)
 library(dndscv)
-setwd("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Fig2_Heatmaps")
 
-#Lucie
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/RefCDS_human_GRCh37_dNdScv.0.1.0.rda")
+
+load("RefCDS_human_GRCh37_dNdScv.0.1.0.rda")
 refdb_run =RefCDS
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/drivergenes.RData")
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/list_names.RData")
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/primary_data.RData")
+load("drivergenes.RData")
+load("list_names.RData")
+load("primary_data.RData")
 
-setwd("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Fig2_Heatmaps")
 library(readxl)
-Gene_list_of_cancer_hallmarks <- read_excel("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/Gene_list_of_cancer_hallmarks.xlsx")
+Gene_list_of_cancer_hallmarks <- read_excel("Gene_list_of_cancer_hallmarks.xlsx")
 
 #convert genes to ensembl id
 library(biomaRt)
@@ -266,7 +264,7 @@ cancer_mean_VAF <- cancer_mean_VAF[, sort(names(cancer_mean_VAF))]
 cancer_mean_VAF$cancer_type<-rownames(cancer_mean_VAF)
 
 library(openxlsx)
-write.xlsx(cancer_mean_VAF, "/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/cancer_mean_VAF.xlsx")
+write.xlsx(cancer_mean_VAF, "cancer_mean_VAF.xlsx")
 
 
 cor_matrix <- cor(cancer_types_vaf, method = "spearman")
