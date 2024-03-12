@@ -17,11 +17,11 @@ library(ggrepel)
 library(readxl)
 library(readr)
 #Lucie
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/RefCDS_human_GRCh37_dNdScv.0.1.0.rda")
+load("RefCDS_human_GRCh37_dNdScv.0.1.0.rda")
 refdb_run =RefCDS
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/drivergenes.RData")
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/list_names.RData")
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/primary_data.RData")
+load("drivergenes.RData")
+load("list_names.RData")
+load("primary_data.RData")
 
 
 
@@ -34,7 +34,7 @@ load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevan
 #stratify hallmark mutations
 library(readxl)
 
-Gene_list_of_cancer_hallmarks <- read_excel("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/Gene_list_of_cancer_hallmarks.xlsx")
+Gene_list_of_cancer_hallmarks <- read_excel("Gene_list_of_cancer_hallmarks.xlsx")
 
 #convert genes to ensembl id
 library(biomaRt)
@@ -268,7 +268,7 @@ ggsave("Global_dnds_pancancer.pdf",plot = Pancancer, units = "cm",height = 12, w
 
 
 ---
-```{r setup, include=FALSE}
+```{r setup for analysis on normal tissues, include=FALSE}
 library(tidyverse)
 library(ggplot2)
 library(ggpubr)
@@ -279,22 +279,21 @@ library(ggpubr)
 library(ggrepel)
 library(readxl)
 library(readr)
-#Lucie
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/RefCDS_human_GRCh37_dNdScv.0.1.0.rda")
+load("RefCDS_human_GRCh37_dNdScv.0.1.0.rda")
 refdb_run =RefCDS
 
 
 ```
 
 
-```{r loadprepare}
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/drivergenes.RData")
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/list_names.RData")
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/annotated_normal_data.RData")
+```{r prepare data for normal analysis}
+load("drivergenes.RData")
+load("list_names.RData")
+load("annotated_normal_data.RData")
 #stratify patients depending on whether they have hallmark mutations
 library(readxl)
 
-Gene_list_of_cancer_hallmarks <- read_excel("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/Gene_list_of_cancer_hallmarks.xlsx")
+Gene_list_of_cancer_hallmarks <- read_excel("Gene_list_of_cancer_hallmarks.xlsx")
 
 #convert genes to ensembl id
 library(biomaRt)
@@ -376,12 +375,6 @@ angiogenesis<-angiogenesis%>%filter(angiogenesis %in% list_names$list_names)
 
 
 ```{r run dnds on each gene list of hallmarks}
-
-setwd("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Fig1b_dNdS_normal/dNdS_normal")
-
-
-
-
 df_normal_angiogenesis_dndscv<-dndscv(annotated_normal_data, refdb = refdb_run ,cv=NULL, gene_list =angiogenesis$angiogenesis)
 
 save(df_normal_angiogenesis_dndscv, file="df_normal_angiogenesis_dndscv.RData")
