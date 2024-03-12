@@ -3,10 +3,7 @@ title: "Fig2c_correlation_VAF_lung"
 output: html_document
 date: "2024-02-13"
 ---
-
-
-
-```{r setup, include=FALSE}
+```{r setup of libraries, include=FALSE}
 rm (list = ls ())
 library(tidyverse)
 library(ggplot2)
@@ -14,13 +11,13 @@ library(ggpubr)
 library(ggrepel)
 library(ggstatsplot)
 library("plotrix")
-TCGA_LUSC<-read.csv("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/TCGA_LUSC.csv")
-TCGA_LUAD<-read.csv("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/TCGA_LUAD.csv")
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/list_names.RData")
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/primary_data.RData")
+TCGA_LUSC<-read.csv("TCGA_LUSC.csv")
+TCGA_LUAD<-read.csv("TCGA_LUAD.csv")
+load("list_names.RData")
+load("primary_data.RData")
 ```
 
-```{r setup, include=FALSE}
+```{r prepare data}
 
 #data for all cancer types
 #function to extract VAF of every cancer hallmark
@@ -129,10 +126,6 @@ return(df_VAF)
 }
 
 #define smoking status in patient data
-
-
-
-
 #function to extract VAF of every cancer hallmark
 
 extract_VAF_LUSC <- function(smoking="current smoker"){
@@ -141,7 +134,6 @@ extract_VAF_LUSC <- function(smoking="current smoker"){
   df_angiogenesis<-LUSC%>% dplyr::filter(angiogenesis=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, angiogenesis)
   df_angiogenesis$angiogenesis<-"angiogenesis"
   colnames(df_angiogenesis)[colnames(df_angiogenesis) == 'angiogenesis'] <- 'category'
-  
   
   df_driver<-LUSC%>% filter(driver=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, driver)
   df_driver$driver<-"driver"
@@ -196,15 +188,9 @@ extract_VAF_LUSC <- function(smoking="current smoker"){
   df_VAF<-as.data.frame(df_VAF[,2 ])
   return(df_VAF)
 }
-
-
-
 ```
 
 ```{r setup, include=FALSE}
-
-
-
 vaf_LUAD_non_smoker<-extract_VAF_LUAD(smoking="lifelong non-smoker")
 colnames(vaf_LUAD_non_smoker)<-"LUAD non smoker (n=64)"
 
@@ -228,17 +214,9 @@ vaf_LUSC_smoker<-extract_VAF_LUSC(smoking="current smoker")
 colnames(vaf_LUSC_smoker)<-"LUSC current smoker (n=123)"
 
 
-
-
-
-
-
 lung_types_vaf<-cbind(vaf_LUAD_reformed_smoker, vaf_LUAD_non_smoker, vaf_LUAD_smoker, vaf_LUSC_smoker, vaf_LUSC_non_smoker, vaf_LUSC_reformed_smoker)
 
-
-
 lung_types_vaf$Pancancer<-df_VAF$VAF
-
 
 cor_matrix <- cor(lung_types_vaf, method = "spearman")
 library(pheatmap)
@@ -246,5 +224,4 @@ pheatmap(cor_matrix, cluster_rows = TRUE, cluster_cols = TRUE, upper = FALSE)
 p<-pheatmap(cor_matrix, scale = "none", cluster_rows = TRUE, cluster_cols = TRUE, 
          upper = TRUE, legend_title = "Spearman correlation")
 ggsave("Correlation_lung_VAF.pdf",plot = p, units = "cm",height = 16, width = 20)
-
 ```
