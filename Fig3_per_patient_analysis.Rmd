@@ -21,18 +21,15 @@ library(survminer)
 library(ggsci)
 library(readxl)
 rm(list=ls())
-setwd("~/Dropbox/PI_position/Projects/Aim2_HallmarkTime/Figures/")
 ```
 
 ```{r load_data}
-load("~/Dropbox/PI_position/Projects/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/primary_data.RData")
-load("~/Dropbox/PI_position/Projects/Aim2_HallmarkTime/Supplementary/all_patient_trajectories_cancer.RData")
-df.clin<-read.table("~/Dropbox/Postdoc/Support_data/tcga_clinicaldata.tsv",header=T,sep="\t")
+load("primary_data.RData")
+load("all_patient_trajectories_cancer.RData")
+df.clin<-read.table("tcga_clinicaldata.tsv",header=T,sep="\t")
 ```
 
 ```{r filter_data}
-
-
 # All mean VAF calculated for each patient
 all_patient_trajectories_cancer<-all_patient_trajectories_cancer %>% dplyr::rename("instability"=mutations)
 
@@ -75,7 +72,7 @@ p101<-ggplot(prop_df, aes(x = rank, y = proportion, fill = hallmark)) +
   labs(x = "Rank", y = "Proportion") +
   theme_minimal() 
 p101
-#ggsave(filename = "~/Dropbox/PI_position/Projects/Aim2_HallmarkTime/Figures/Fig3b_Ranksperhallmark.pdf",plot = p101, width = 8, height = 8)
+#ggsave(filename = "Fig3b_Ranksperhallmark.pdf",plot = p101, width = 8, height = 8)
 
 ```
 
@@ -133,9 +130,9 @@ p2
 
 ## Unfiltered clean
 p3
-#ggsave(filename = "~/Dropbox/PI_position/Projects/Aim2_HallmarkTime/Figures/Fig3a_rankheatmap_all.pdf",plot = p1, width = 30, height = 30)
+#ggsave(filename = "Fig3a_rankheatmap_all.pdf",plot = p1, width = 30, height = 30)
 
-#ggsave(filename = "~/Dropbox/PI_position/Projects/Aim2_HallmarkTime/Figures/Fig3a_rankheatmap_all_onlyheatmap.pdf",plot = p2, width = 30, height = 30)
+#ggsave(filename = "Fig3a_rankheatmap_all_onlyheatmap.pdf",plot = p2, width = 30, height = 30)
 ```
 
 ```{r Fig_3C_clustering_observed_ranks_PCA_FIGURE}
@@ -176,7 +173,7 @@ group_center <- df.101 %>%
 plot_PCA1<-biplot + geom_text(data = group_center, aes(x = center_PC1, y = center_PC2, label = ""), size = 3, hjust = 1.2,)
 plot_PCA1
 
-#ggsave(filename = "~/Dropbox/PI_position/Projects/Aim2_HallmarkTime/Figures/Fig3C_PCAplot_rank.pdf",plot = plot_PCA1, width = 10, height = 10)
+#ggsave(filename = "Fig3C_PCAplot_rank.pdf",plot = plot_PCA1, width = 10, height = 10)
 
 ```
 
@@ -214,7 +211,7 @@ plot_PCA2<-fviz_pca_biplot(pca_result, axes = c(1, 2),geom=c("point", "text"),
                 ) + labs(fill = "type", color = "Contrib", alpha = "Contrib") # Add shape to legend
 
 plot_PCA2
-#ggsave(filename = "~/Dropbox/PI_position/Projects/Aim2_HallmarkTime/Figures/Fig3DPCAplot_rank_alt.pdf",plot = plot_PCA2, width = 15, height = 15)
+#ggsave(filename = "Fig3DPCAplot_rank_alt.pdf",plot = plot_PCA2, width = 15, height = 15)
 
 ```
 
@@ -242,7 +239,7 @@ psurv_rank2PCA_2Ks<-ggsurvplot(fit, data = df.clin_kmeans,risk.table = T,
            palette = "npg" # Add theme
           )
 
-pdf("~/Dropbox/PI_position/Projects/Aim2_HallmarkTime/Figures/Fig3D_Survplot_rank_2.pdf")
+pdf("Fig3D_Survplot_rank_2.pdf")
 print(psurv_rank2PCA_2Ks)
 dev.off()
 
@@ -259,7 +256,7 @@ plot_bar_PCA_2Clusters<-ggplot(summary_df, aes(x = type, y = count, fill = clust
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 90, hjust = 1)) 
 
-ggsave(filename = "~/Dropbox/PI_position/Projects/Aim2_HallmarkTime/Figures/Fig3F_PCAplot_proportions2clusters.pdf",plot = plot_bar_PCA_2Clusters, width = 15, height = 10)
+ggsave(filename = "Fig3F_PCAplot_proportions2clusters.pdf",plot = plot_bar_PCA_2Clusters, width = 15, height = 10)
 
 
 ```
@@ -296,7 +293,7 @@ psurv_rank2PCA_2Ks_DFI<-ggsurvplot(fit, data = df.clin_kmeans,risk.table = F,
            palette = "npg" # Add theme
           )
 
-#pdf("~/Dropbox/PI_position/Projects/Aim2_HallmarkTime/Figures/Fig3D_Survplot_rank_2_DFI.pdf")
+#pdf("Fig3D_Survplot_rank_2_DFI.pdf")
 print(psurv_rank2PCA_2Ks_DFI)
 #dev.off()
 
@@ -320,7 +317,7 @@ psurv_rank2PCA_2Ks_PFI<-ggsurvplot(fit, data = df.clin_kmeans,risk.table = F,
            palette = "npg" # Add theme
           )
 
-#pdf("~/Dropbox/PI_position/Projects/Aim2_HallmarkTime/Figures/Fig3D_Survplot_rank_2_PFI.pdf")
+#pdf("Fig3D_Survplot_rank_2_PFI.pdf")
 print(psurv_rank2PCA_2Ks_PFI)
 #dev.off()
 ```
@@ -342,7 +339,7 @@ toplot1<-ggplot(prop_df_2, aes(x = rank, y = proportion, fill = hallmark)) +
   theme_minimal() + ggtitle(tumor)
 print(toplot1)
 
-ggsave(filename = "~/Dropbox/PI_position/Projects/Aim2_HallmarkTime/Figures/Fig3F_PCAplot_proportions_cluster2.pdf",plot = toplot1, width = 15, height = 10)
+ggsave(filename = "Fig3F_PCAplot_proportions_cluster2.pdf",plot = toplot1, width = 15, height = 10)
 
 prop_df_2 <- df.102 %>% column_to_rownames("tcgaid") %>% filter(cluster==2) %>% dplyr::select(-type,-cluster) %>%
   gather(hallmark, rank) %>% 
@@ -358,7 +355,7 @@ toplot2<-ggplot(prop_df_2, aes(x = rank, y = proportion, fill = hallmark)) +
   theme_minimal() + ggtitle(tumor)
 print(toplot2)
 
-ggsave(filename = "~/Dropbox/PI_position/Projects/Aim2_HallmarkTime/Figures/Fig3F_PCAplot_proportions_cluster1.pdf",plot = toplot2, width = 15, height = 10)
+ggsave(filename = "Fig3F_PCAplot_proportions_cluster1.pdf",plot = toplot2, width = 15, height = 10)
 ```
 
 
@@ -366,7 +363,7 @@ ggsave(filename = "~/Dropbox/PI_position/Projects/Aim2_HallmarkTime/Figures/Fig3
 
 # iterate over each tumor type
 
-pdf("~/Desktop/survival_plots_test.pdf")
+pdf("survival_plots_test.pdf")
 for(tumor_type in unique(df.clin_kmeans$type.x)) {
    library(survminer)
   # filter data for a specific tumor type
@@ -457,7 +454,7 @@ psurv_rank2PCA_4Ks<-ggsurvplot(fit, data = df.clin_kmeans,risk.table = T,
            palette = "npg" # Add theme
           )
 
-#pdf("~/Dropbox/PI_position/Projects/Aim2_HallmarkTime/Figures/Fig3E_Survplot_rank_4.pdf")
+#pdf("Fig3E_Survplot_rank_4.pdf")
 psurv_rank2PCA_4Ks
 #dev.off()
 
