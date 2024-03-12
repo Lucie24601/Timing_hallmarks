@@ -19,17 +19,16 @@ library(ggeasy)
 
 
 ```{r load and prepare data}
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/drivergenes.RData")
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/list_names.RData")
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/primary_data.RData")
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/annotated_normal_data.RData")
+load("drivergenes.RData")
+load("list_names.RData")
+load("primary_data.RData")
+load("annotated_normal_data.RData")
 
 ```
 
 
 
 ```{r VAF for pancancer Fig1c}
-setwd("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Fig1a_VAF_confidence_interval")
 
 primary_plot<-primary_data%>%dplyr::filter(impact %in% c("Missense", "Nonsense","Essential_Splice","Stop_loss"))%>%dplyr::filter(gene %in% list_names$list_names)
 #create 
