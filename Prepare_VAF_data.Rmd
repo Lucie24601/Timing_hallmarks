@@ -11,18 +11,18 @@ library(ggplot2)
 library(ggpubr)
 library(ggrepel)
 library(ggstatsplot)
-TCGA_hg19 <- read_csv("/Users/luciegourmet/Dropbox/Projects/DriverLandscape/VAF_cancer_hallmarks/Relevant_analysis/Data/TCGA-hg19.csv")
-load("/Users/luciegourmet/Dropbox/Projects/DriverLandscape/VAF_cancer_hallmarks/Relevant_analysis/Data/RefCDS_human_GRCh37_dNdScv.0.1.0.rda")
+TCGA_hg19 <- read_csv("TCGA-hg19.csv")
+load("RefCDS_human_GRCh37_dNdScv.0.1.0.rda")
 refdb_run =RefCDS
 #normal data from the paper The somatic mutation landscape of the human body of Garcia-Neto
-normal_data <- read_tsv('/Users/luciegourmet/Dropbox/Projects/DriverLandscape/VAF_cancer_hallmarks/Relevant_analysis/Data/13059_2019_1919_MOESM5_ESM.tsv')
+normal_data <- read_tsv('13059_2019_1919_MOESM5_ESM.tsv')
 ```
 
 
 ```{r prepare hallmarks mutations}
 library(readxl)
 
-Gene_list_of_cancer_hallmarks <- read_excel("/Users/luciegourmet/Dropbox/Projects/DriverLandscape/VAF_cancer_hallmarks/Relevant_analysis/Data/Gene_list_of_cancer_hallmarks.xlsx")
+Gene_list_of_cancer_hallmarks <- read_excel("Gene_list_of_cancer_hallmarks.xlsx")
 #convert genes to ensembl id
 library(biomaRt)
 hsapiens_genes <- getBM(attributes = c("ensembl_gene_id", 
@@ -81,7 +81,7 @@ mutations<-as.data.frame(mutations)
 escape_genes = readxl::read_xlsx("/Users/luciegourmet/Dropbox/Projects/DriverLandscape/Data/SuppTable3_escapegenes_Aug2021.xlsx")
 colnames(escape_genes)<-"escape"
 #load control category cancer drivers
-load("/Users/luciegourmet/Dropbox/Projects/DriverLandscape/VAF_cancer_hallmarks/Relevant_analysis/Data/drivergenes.RData")
+load("drivergenes.RData")
 ```
 
 ```{r run dnds to annotate cancer data}
@@ -106,7 +106,7 @@ save(annotated_TCGA_hg19, file="annotated_TCGA_hg19.RData")
 
 
 ```{r annotateplot}
-load("/Users/luciegourmet/annotated_TCGA_hg19.RData")
+load("annotated_TCGA_hg19.RData")
 #remove duplicates
 annotated_TCGA_hg19<- annotated_TCGA_hg19[!duplicated(annotated_TCGA_hg19), ]
 #add sample type
