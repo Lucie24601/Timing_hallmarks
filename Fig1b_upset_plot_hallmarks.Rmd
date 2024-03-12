@@ -3,12 +3,6 @@ title: "Fig1b_upset_plot_hallmarks"
 output: html_document
 date: "2024-02-13"
 ---
----
-title: "UpsetRedone"
-author: "Luis Zapata"
-date: "2024-01-21"
-output: html_document
----
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -27,17 +21,17 @@ library(RColorBrewer)
 ```
 
 
-```{r cars}
+```{r prepare data and plot}
 
 #reading the data
 
-load("/Users/lzapata/Dropbox/PI_position/Projects/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/drivergenes.RData")
+load("drivergenes.RData")
 
 #stratify patients depending on whether they have hallmark mutations
 
 
-Gene_list_of_cancer_hallmarks <- read_excel("/Users/lzapata/Dropbox/PI_position/Projects/Aim2_HallmarkTime/Tables/Gene_list_of_cancer_hallmarks.xlsx")
-load("/Users/lzapata/Dropbox/PI_position/Projects/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/list_names.RData")
+Gene_list_of_cancer_hallmarks <- read_excel("Gene_list_of_cancer_hallmarks.xlsx")
+load("list_names.RData")
 
 hallmark_genes<-Gene_list_of_cancer_hallmarks %>% unique()
 #convert genes to ensembl id
@@ -97,7 +91,7 @@ mutations<-  unique(mutations$hgnc_symbol)
 mutations<-as.data.frame(mutations)
 
 
-escape_genes = readxl::read_xlsx("/Users/lzapata/Dropbox/PI_position/Projects/Aim2_DriverLandscape/Data/SuppTable3_escapegenes_Aug2021.xlsx")
+escape_genes = readxl::read_xlsx("SuppTable3_escapegenes_Aug2021.xlsx")
 colnames(escape_genes)<-"escape"
 
 #filter
