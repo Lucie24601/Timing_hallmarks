@@ -11,24 +11,23 @@ library(ggpubr)
 library(ggrepel)
 library(ggstatsplot)
 library(dndscv)
-setwd("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/Supplementary")
 library(readxl)
+library(pheatmap)
 
 # Set the path to your Excel file
-file_path <- "/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/Supplementary/ASCETIC_results.xlsx"
+file_path <- "ASCETIC_results.xlsx"
 
 # Read the Excel file (by default, it reads the first sheet)
 data <- read_excel(file_path)
 ```
 
 
-```{r cars}
+```{r plot ASCETIC results}
 ascetic_results<- data %>% select(-hallmarks)
 cor_matrix <- cor(ascetic_results, method = "spearman")
-library(pheatmap)
+
 breaks <- seq(-1, 1, length.out = 100)
 p<-pheatmap(cor_matrix, cluster_rows = TRUE, cluster_cols = TRUE, upper = FALSE, breaks = breaks)
-
 
 ggsave("Correlation_cancer_types_ASCETIC.pdf",plot = p, units = "cm",height = 16, width = 20)
 ```
