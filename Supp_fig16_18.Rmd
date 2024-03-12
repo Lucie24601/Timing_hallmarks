@@ -6,8 +6,8 @@ date: "2024-02-15"
 
 ```{r setup, include=FALSE}
 #Ordering bewteen hallmarks
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/primary_data.RData")
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/list_names.RData")
+load("primary_data.RData")
+load("list_names.RData")
 library(readxl)
 library(tidyverse)
 library(ggplot2)
@@ -16,7 +16,8 @@ library(ggrepel)
 library(ggstatsplot)
 library(dplyr)
 
-Gene_list_of_cancer_hallmarks <- read_excel("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/Gene_list_of_cancer_hallmarks.xlsx")
+Gene_list_of_cancer_hallmarks <- read_excel("Gene_list_of_cancer_hallmarks.xlsx")
+load("all_patient_trajectories_cancer.RData")
 #convert genes to ensembl id
 library(biomaRt)
 hsapiens_genes <- getBM(attributes = c("ensembl_gene_id", 
@@ -72,10 +73,10 @@ mutations<-  unique(mutations$hgnc_symbol)
 mutations<-as.vector(mutations)
 
 #load control category escape
-escape_genes = readxl::read_xlsx("/Users/luciegourmet/Dropbox/Projects/DriverLandscape/Data/SuppTable3_escapegenes_Aug2021.xlsx")
+escape_genes = readxl::read_xlsx("SuppTable3_escapegenes_Aug2021.xlsx")
 colnames(escape_genes)<-"escape"
 #load control category cancer drivers
-load("/Users/luciegourmet/Dropbox/Projects/DriverLandscape/VAF_cancer_hallmarks/Relevant_analysis/Data/drivergenes.RData")
+load("drivergenes.RData")
 
 library("plotrix")
 data_summary <- function(data, varname, groupnames){
@@ -89,28 +90,16 @@ data_summary <- function(data, varname, groupnames){
   data_sum <- rename(data_sum, c("mean" = varname))
   return(data_sum)
 }
-
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/Supplementary/all_patient_trajectories_cancer.RData")
-
 ```
 
 
 ```{r SF17 hallmarks rank }
-
 #plot the ordering of the actual data
-
-
-
 transposed_cancer_patients<-t(all_patient_trajectories_cancer)
-
 transposed_cancer_patients <- apply(transposed_cancer_patients, 2, function(x) rank(-x, ties.method = "min"))
-
 
 df_cancer_patients<-t(transposed_cancer_patients)
 df_cancer_patients<-as.data.frame(df_cancer_patients)
-
-
-library(tidyverse)
 
 new_df <- df_cancer_patients %>%
   gather(key = "hallmark", value = "rank") %>%
@@ -121,10 +110,7 @@ new_df <- df_cancer_patients %>%
 ggplot(new_df, aes(x = rank, y = frequency, fill = hallmark)) +
   geom_bar(stat = "identity", position = "dodge") +
   labs(x = "Rank", y = "Frequency", fill = "Halmmark") 
-
 ```
-
-
 
 ```{r SF18 pseudohallmarks rank }
 #pseudo hallmarks
