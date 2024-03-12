@@ -27,18 +27,18 @@ library(openxlsx)
 
 
 ```{r load and prepare data}
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/drivergenes.RData")
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/list_names.RData")
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/primary_data.RData")
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/annotated_normal_data.RData")
+load("drivergenes.RData")
+load("list_names.RData")
+load("primary_data.RData")
+load("annotated_normal_data.RData")
 
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/RefCDS_human_GRCh37_dNdScv.0.1.0.rda")
+load("RefCDS_human_GRCh37_dNdScv.0.1.0.rda")
 refdb_run =RefCDS
 
 #stratify hallmark mutations
 library(readxl)
 
-Gene_list_of_cancer_hallmarks <- read_excel("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/Gene_list_of_cancer_hallmarks.xlsx")
+Gene_list_of_cancer_hallmarks <- read_excel("Gene_list_of_cancer_hallmarks.xlsx")
 
 #convert genes to ensembl id
 library(biomaRt)
@@ -97,7 +97,7 @@ mutations<-  unique(mutations$hgnc_symbol)
 mutations<-as.data.frame(mutations)
 
 
-escape_genes = readxl::read_xlsx("/Users/luciegourmet/Dropbox/Projects/DriverLandscape/Data/SuppTable3_escapegenes_Aug2021.xlsx")
+escape_genes = readxl::read_xlsx("SuppTable3_escapegenes_Aug2021.xlsx")
 colnames(escape_genes)<-"escape"
 
 #filter
@@ -114,8 +114,6 @@ mutations<-mutations%>%filter(mutations %in% list_names$list_names)
 proliferation<-proliferation%>%filter(proliferation %in% list_names$list_names)
 angiogenesis<-angiogenesis%>%filter(angiogenesis %in% list_names$list_names)
 ```
-
-
 
 ```{r SF11  dnds correlation cancer types}
 #function to extract mean dnds
@@ -241,7 +239,6 @@ library(pheatmap)
 pheatmap(cor_matrix, cluster_rows = TRUE, cluster_cols = TRUE, upper = FALSE)
 p<-pheatmap(cor_matrix, scale = "none", cluster_rows = TRUE, cluster_cols = TRUE, 
          upper = TRUE, legend_title = "Spearman correlation")
-
 ggsave("Correlation_cancer_types_dnds.pdf",plot = p, units = "cm",height = 16, width = 20)
 ```
 
@@ -390,11 +387,8 @@ library(pheatmap)
 breaks <- seq(-1, 1, length.out = 100)
 p<-pheatmap(cor_matrix, cluster_rows = TRUE, cluster_cols = TRUE, upper = FALSE, breaks = breaks)
 
-
 ggsave("Correlation_cancer_types_VAF_without_TP53.pdf",plot = p, units = "cm",height = 16, width = 20)
-
 ```
-
 
 
 ```{r SF13 correlation VAF dnds (part 1: VAF)}
@@ -640,7 +634,6 @@ plotdnds<-function(x){
   return(Globaldnds)
 }
 
-
 #function to get mean dnds from every cancer type
 get_global_dnds<-function(cancer){
   #fiter cancer type
@@ -750,8 +743,6 @@ colnames(dnds_CHOL)<-"CHOL"
 
 
 cancer_types_dnds<-cbind(dnds_ACC, dnds_BRCA, dnds_BLCA, dnds_DLBC, dnds_COAD, dnds_ESCA, dnds_GBM, dnds_GBM, dnds_HNSC, dnds_KIRP, dnds_KIRC, dnds_KICH, dnds_LIHC, dnds_LGG, dnds_LUAD, dnds_LUSC, dnds_CHOL, dnds_OV, dnds_PAAD, dnds_PRAD, dnds_PCPG, dnds_READ, dnds_STAD, dnds_SARC, dnds_SKCM, dnds_TGCT, dnds_THCA, dnds_THYM, dnds_UCEC, dnds_UCS, dnds_UVM, dnds_CESC, dnds_MESO)
-
-
 corr_matrix <- cor(cancer_types_vaf, cancer_types_dnds)
 p<-pheatmap(corr_matrix, scale = "none", cluster_rows = TRUE, cluster_cols = TRUE, 
          upper = TRUE, legend_title = "Spearman correlation")
@@ -759,10 +750,8 @@ ggsave("Correlation_cancer_types_dnds_vaf.pdf",plot = p, units = "cm",height = 1
 ```
 
 ```{r SF14 rank frequency without TP53}
-
 ###Remove TP53 mutations
 primary_data<-primary_data%>%dplyr::filter(impact %in% c("Missense", "Nonsense","Essential_Splice","Stop_loss"))%>%dplyr::filter(gene %in% list_names$list_names)%>%dplyr::filter(!gene == "TP53")
-
 
 get_time<-function(x){
   value<-mean(x)
