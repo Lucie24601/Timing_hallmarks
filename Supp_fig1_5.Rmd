@@ -3,7 +3,6 @@ title: "Supp_fig"
 output: html_document
 date: "2024-02-14"
 ---
-
 ```{r setup, include=FALSE}
 library(tidyverse)
 library(ggplot2)
@@ -24,21 +23,19 @@ library(pheatmap)
 library(openxlsx)
 ```
 
-
-
 ```{r load and prepare data}
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/drivergenes.RData")
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/list_names.RData")
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/primary_data.RData")
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/annotated_normal_data.RData")
+load("drivergenes.RData")
+load("list_names.RData")
+load("primary_data.RData")
+load("annotated_normal_data.RData")
 
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/RefCDS_human_GRCh37_dNdScv.0.1.0.rda")
+load("RefCDS_human_GRCh37_dNdScv.0.1.0.rda")
 refdb_run =RefCDS
 
 #stratify hallmark mutations
 library(readxl)
 
-Gene_list_of_cancer_hallmarks <- read_excel("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/Gene_list_of_cancer_hallmarks.xlsx")
+Gene_list_of_cancer_hallmarks <- read_excel("Gene_list_of_cancer_hallmarks.xlsx")
 
 #convert genes to ensembl id
 library(biomaRt)
@@ -96,7 +93,6 @@ mutations <- hsapiens_genes %>%filter(hsapiens_genes$hgnc_symbol %in% Gene_list_
 mutations<-  unique(mutations$hgnc_symbol)
 mutations<-as.data.frame(mutations)
 
-
 escape_genes = readxl::read_xlsx("/Users/luciegourmet/Dropbox/Projects/DriverLandscape/Data/SuppTable3_escapegenes_Aug2021.xlsx")
 colnames(escape_genes)<-"escape"
 
@@ -113,15 +109,12 @@ metastasis<-metastasis%>%filter(metastasis %in% list_names$list_names)
 mutations<-mutations%>%filter(mutations %in% list_names$list_names)
 proliferation<-proliferation%>%filter(proliferation %in% list_names$list_names)
 angiogenesis<-angiogenesis%>%filter(angiogenesis %in% list_names$list_names)
-
-
 ```
 
 
 
 ```{r SF1 synonymous only VAF for pancancer}
-setwd("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Fig1a_VAF_confidence_interval")
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/primary_data.RData")
+load("primary_data.RData")
 primary_plot<-primary_data%>%dplyr::filter(impact %in% c("Synonymous"))%>%dplyr::filter(gene %in% list_names$list_names)
 #create 
 df_angiogenesis<-primary_plot%>% dplyr::filter(angiogenesis=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, angiogenesis)
@@ -196,30 +189,21 @@ df_VAF<- data_summary(df_density, varname="VAF",
                     groupnames= "category")
 df_VAF<-df_VAF[-(3:4), ]
 
-
 p1<-ggplot(df_VAF, aes(x= reorder(category, -VAF), y = VAF), color=category)+
   geom_errorbar(aes(ymin=VAF-std.error, ymax=VAF+std.error, color=category), width=0, position=position_dodge(0.78))+ rotate_x_text(45) +   
   geom_point(position = position_dodge(0.78), size = 1.5) +  cowplot::theme_cowplot()+theme(legend.position="none")+scale_y_log10()+xlab(NULL) +ylab("VAF")+ scale_color_manual(breaks = c("genome instability", "immortality", "metabolism", "angiogenesis","growth", "death","proliferation", "metastasis", "immune evasion", "inflammation"), values =c( "purple", "turquoise", "magenta", "red", "brown","blue", "pink", "yellow", "orange", "green") )+
   theme(axis.text.x = element_text(angle=90, vjust=.5, hjust=1))+ggtitle("Cancer")
 
-#+coord_flip()+ scale_x_discrete(limits = c("immune evasion","inflammation","proliferation", "metastasis","death","angiogenesis", "growth", "metabolism", "immortality", "genome instability"))
-
-
 ggsave("Synonymous_VAF_pancancer.pdf",plot = p1, units = "cm",height = 12, width = 16)
 ```
 
-
-
-
 ```{r SF2 copy number correction}
-
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/primary_data.RData")
+load("primary_data.RData")
 primary_plot<-primary_data%>%dplyr::filter(impact %in% c("Missense", "Nonsense","Essential_Splice","Stop_loss"))%>%dplyr::filter(gene %in% list_names$list_names)%>%dplyr::filter(absCNcorrected == "2")
 #create 
 df_angiogenesis<-primary_plot%>% dplyr::filter(angiogenesis=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, angiogenesis)
 df_angiogenesis$angiogenesis<-"angiogenesis"
 colnames(df_angiogenesis)[colnames(df_angiogenesis) == 'angiogenesis'] <- 'category'
-
 
 df_driver<-primary_plot%>% filter(driver=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, driver)
 df_driver$driver<-"driver"
@@ -288,27 +272,18 @@ df_VAF<- data_summary(df_density, varname="VAF",
                     groupnames= "category")
 df_VAF<-df_VAF[-(3:4), ]
 
-
 p1<-ggplot(df_VAF, aes(x= reorder(category, -VAF), y = VAF), color=category)+
   geom_errorbar(aes(ymin=VAF-std.error, ymax=VAF+std.error, color=category), width=0, position=position_dodge(0.78))+ rotate_x_text(45) +   
   geom_point(position = position_dodge(0.78), size = 1.5) +  cowplot::theme_cowplot()+theme(legend.position="none")+scale_y_log10()+xlab("Cancer hallmarks (ordered by VAF)") +ylab("VAF") + scale_color_manual(breaks = c("genome instability", "immortality", "metabolism", "angiogenesis","growth", "death","proliferation", "metastasis", "immune evasion", "inflammation"), values =c( "purple", "turquoise", "magenta", "red", "brown","blue", "pink", "yellow", "orange", "green") )+
   theme(axis.text.x = element_text(angle=90, vjust=.5, hjust=1))+
 
-#+coord_flip()+ scale_x_discrete(limits = c("inflammation","immune evasion","death","proliferation", "metastasis","angiogenesis", "growth", "metabolism", "immortality", "genome instability"))
-
-
 ggsave("VAF_pancancer_copy_number.pdf",plot = p1, units = "cm",height = 12, width = 16)
-
 ```
 
-
-
 ```{r SF3 randomisation analysis }
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/primary_data.RData")
-
+load("primary_data.RData")
 #neutral analysis no hallmarks
 primary_data_filt<-primary_data%>% filter(!gene %in% all_hallmarks)
-
 
 #function to calculate mean and sd
 library("plotrix")
@@ -323,7 +298,6 @@ data_summary <- function(data, varname, groupnames){
   data_sum <- rename(data_sum, c("mean" = varname))
   return(data_sum)
 }
-
 
 
 #loop to get 1000 means
@@ -411,9 +385,6 @@ df_VAF_cancer<- data_summary(df_density, varname="VAF",
                              groupnames= "category")
 
 
-
-
-
 neutral_VAF<-NULL
 for (i in 1:100) {
   #create 10 lists of neutral genes
@@ -476,11 +447,8 @@ combined_data <- c(vaf1, vaf2)
 # Plot the first histogram
 hist(vaf2, col = "blue", xlim = c(0.278, 0.305), main = "Distribution with Mean and Standard Deviation",
      xlab = "VAF", ylab = "Frequency")
-
 # Plot the second histogram on the same plot
 hist(vaf1, col = "red", add = TRUE)
-
-
 ```
 
 
@@ -494,12 +462,7 @@ setwd("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Releva
 
 #run dnds on each gene list of hallmarks
 df_all_dndscv<-dndscv(primary_data, refdb = refdb_run ,cv=NULL)
-
 save(df_all_dndscv, file="df_all_dndscv.RData")
-
-
-
-
 
 #add dnds to VAF
 df_dnds<-df_all_dndscv$sel_cv
@@ -595,17 +558,10 @@ p1<-ggplot(df_combined_VAF_dNdS, aes(x= reorder(category, -combined_VAF_dNdS), y
   geom_point(position = position_dodge(0.78), size = 1.5) +  cowplot::theme_cowplot()+theme(legend.position="none")+scale_y_log10()+xlab(NULL) +ylab("division of VAF by dN/dS")+ scale_color_manual(breaks = c("genome instability", "immortality", "metabolism", "angiogenesis","growth", "death","proliferation", "metastasis", "immune evasion", "inflammation"), values =c( "purple", "turquoise", "magenta", "red", "brown","blue", "pink", "yellow", "orange", "green") )+
   theme(axis.text.x = element_text(angle=90, vjust=.5, hjust=1))+ggtitle("Cancer")
 
-#+coord_flip()+ scale_x_discrete(limits = c("immune evasion","inflammation","proliferation", "metastasis","death","angiogenesis", "growth", "metabolism", "immortality", "genome instability"))
-
-
 ggsave("Divide_combined_VAF_dNdS_pancancer.pdf",plot = p1, units = "cm",height = 12, width = 16)
 ```
 
-
-
-
 ```{r SF5 selected VAF}
-
 run_volcano_single<-function(x,FDR=0.05, filt){
   df_1<-x$sel_cv
   
@@ -680,8 +636,6 @@ selected_primary_data<-selected_primary_data %>% mutate(metabolism=ifelse(gene %
 selected_primary_data<-selected_primary_data %>% mutate(angiogenesis=ifelse(gene %in% selected_angiogenesis$gene_name,"YES","NO"))
 
 #do VAF on primary data
-setwd("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Fig1a_VAF_confidence_interval")
-
 selected_primary_data<-selected_primary_data%>%dplyr::filter(impact %in% c("Missense", "Nonsense","Essential_Splice","Stop_loss"))%>%dplyr::filter(gene %in% list_names$list_names)
 #create 
 df_angiogenesis<-selected_primary_data%>% dplyr::filter(angiogenesis=="YES")%>% dplyr::select(sampleID, gene, VAF, cancertype, angiogenesis)
@@ -756,15 +710,10 @@ df_VAF<- data_summary(df_density, varname="VAF",
                       groupnames= "category")
 df_VAF<-df_VAF[-(3:4), ]
 
-
 p1<-ggplot(df_VAF, aes(x= reorder(category, -VAF), y = VAF), color=category)+
   geom_errorbar(aes(ymin=VAF-std.error, ymax=VAF+std.error, color=category), width=0, position=position_dodge(0.78))+ rotate_x_text(45) +   
   geom_point(position = position_dodge(0.78), size = 1.5) +  cowplot::theme_cowplot()+theme(legend.position="none")+scale_y_log10()+xlab(NULL) +ylab("VAF")+ scale_color_manual(breaks = c("genome instability", "immortality", "metabolism", "angiogenesis","growth", "death","proliferation", "metastasis", "immune evasion", "inflammation"), values =c( "purple", "turquoise", "magenta", "red", "brown","blue", "pink", "yellow", "orange", "green") )+
   theme(axis.text.x = element_text(angle=90, vjust=.5, hjust=1))+ggtitle("Cancer")
-
-#+coord_flip()+ scale_x_discrete(limits = c("immune evasion","inflammation","proliferation", "metastasis","death","angiogenesis", "growth", "metabolism", "immortality", "genome instability"))
-
-
 ggsave("Selected_VAF_pancancer.pdf",plot = p1, units = "cm",height = 12, width = 16)
 ```
 
