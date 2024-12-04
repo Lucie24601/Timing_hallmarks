@@ -17,11 +17,11 @@ library(ggeasy)
 
 
 ```{r load and prepare data}
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/drivergenes.RData")
-load("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/list_names.RData")
-pcawg_data <- read_tsv("/Users/luciegourmet/Library/CloudStorage/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Publication_validation/Additional_data/October_2016_all_patients_2778.snv_mnv_indel.maf.coding.xena")
+load("drivergenes.RData")
+load("list_names.RData")
+pcawg_data <- read_tsv("October_2016_all_patients_2778.snv_mnv_indel.maf.coding.xena")
 library(readxl)
-PCAWG_metadata <- read_excel("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Publication_validation/Additional_data/PCAWG_metadata.xlsx")
+PCAWG_metadata <- read_excel("PCAWG_metadata.xlsx")
 
 
 
@@ -29,7 +29,7 @@ PCAWG_metadata <- read_excel("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_
 
 
 ```{r}
-Gene_list_of_cancer_hallmarks <- read_excel("/Users/luciegourmet/Dropbox/Aim2_HallmarkTime/VAF_cancer_hallmarks/Relevant_analysis/Data/Gene_list_of_cancer_hallmarks.xlsx")
+Gene_list_of_cancer_hallmarks <- read_excel("Gene_list_of_cancer_hallmarks.xlsx")
 
 #convert genes to ensembl id
 library(biomaRt)
